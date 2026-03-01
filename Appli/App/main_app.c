@@ -205,7 +205,7 @@ void main_app(void)
 
   /* Initialize the ST67W6X Driver */
   ret = W6X_Init();
-  if (ret)
+   if (ret)
   {
     LogError("failed to initialize ST67W6X Driver, %" PRIi32 "\n", ret);
     goto _err;
