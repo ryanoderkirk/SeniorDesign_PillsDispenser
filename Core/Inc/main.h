@@ -75,13 +75,10 @@ void Error_Handler(void);
 #define WIFI2_BOOT_GPIO_Port GPIOC
 #define SELECT_Pin GPIO_PIN_0
 #define SELECT_GPIO_Port GPIOF
-#define SELECT_EXTI_IRQn EXTI0_IRQn
 #define BACK_Pin GPIO_PIN_1
 #define BACK_GPIO_Port GPIOF
-#define BACK_EXTI_IRQn EXTI1_IRQn
 #define ENCA_Pin GPIO_PIN_2
 #define ENCA_GPIO_Port GPIOF
-#define ENCA_EXTI_IRQn EXTI2_IRQn
 #define ENCB_Pin GPIO_PIN_3
 #define ENCB_GPIO_Port GPIOF
 #define WIFI2_UART_RX_Pin GPIO_PIN_6
@@ -98,6 +95,8 @@ void Error_Handler(void);
 #define LCD_MISO_GPIO_Port GPIOC
 #define LCD_DC_Pin GPIO_PIN_3
 #define LCD_DC_GPIO_Port GPIOC
+#define CHIP_EN_Pin GPIO_PIN_0
+#define CHIP_EN_GPIO_Port GPIOB
 #define WIFI_MOSI_Pin GPIO_PIN_2
 #define WIFI_MOSI_GPIO_Port GPIOB
 #define POWER_INT_Pin GPIO_PIN_11
@@ -114,20 +113,24 @@ void Error_Handler(void);
 #define DEBUG_USART_RX_GPIO_Port GPIOD
 #define WIFI_UART_RX_Pin GPIO_PIN_11
 #define WIFI_UART_RX_GPIO_Port GPIOD
-#define SPI_CS_Pin GPIO_PIN_9
-#define SPI_CS_GPIO_Port GPIOA
-#define BOOT_Pin GPIO_PIN_10
-#define BOOT_GPIO_Port GPIOA
-#define CHIP_EN_Pin GPIO_PIN_11
-#define CHIP_EN_GPIO_Port GPIOA
-#define SPI_RDY_Pin GPIO_PIN_12
-#define SPI_RDY_GPIO_Port GPIOA
+#define SPI_CS3_Pin GPIO_PIN_9
+#define SPI_CS3_GPIO_Port GPIOA
+#define BOOT3_Pin GPIO_PIN_10
+#define BOOT3_GPIO_Port GPIOA
+#define CHIP_EN3_Pin GPIO_PIN_11
+#define CHIP_EN3_GPIO_Port GPIOA
+#define SPI_RDY3_Pin GPIO_PIN_12
+#define SPI_RDY3_GPIO_Port GPIOA
 #define WIFI_SCK_Pin GPIO_PIN_10
 #define WIFI_SCK_GPIO_Port GPIOC
 #define WIFI_MISO_Pin GPIO_PIN_11
 #define WIFI_MISO_GPIO_Port GPIOC
 #define WIFI_UART_TX_Pin GPIO_PIN_1
 #define WIFI_UART_TX_GPIO_Port GPIOD
+#define BOOT_Pin GPIO_PIN_3
+#define BOOT_GPIO_Port GPIOD
+#define SPI_CS_Pin GPIO_PIN_4
+#define SPI_CS_GPIO_Port GPIOD
 #define Flash_MOSI_Pin GPIO_PIN_7
 #define Flash_MOSI_GPIO_Port GPIOD
 #define Flash_MISO_Pin GPIO_PIN_9
@@ -136,6 +139,9 @@ void Error_Handler(void);
 #define Flash_SCK_GPIO_Port GPIOG
 #define Flash_CS_Pin GPIO_PIN_12
 #define Flash_CS_GPIO_Port GPIOG
+#define SPI_RDY_Pin GPIO_PIN_7
+#define SPI_RDY_GPIO_Port GPIOB
+#define SPI_RDY_EXTI_IRQn EXTI7_IRQn
 
 /* USER CODE BEGIN Private defines */
 
