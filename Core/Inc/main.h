@@ -71,6 +71,8 @@ void Error_Handler(void);
 #define DEBUG_USART_TX_GPIO_Port GPIOD
 #define DEBUG_USART_RX_Pin GPIO_PIN_9
 #define DEBUG_USART_RX_GPIO_Port GPIOD
+#define Flash_CS_Pin GPIO_PIN_12
+#define Flash_CS_GPIO_Port GPIOG
 #define SPI_RDY_Pin GPIO_PIN_7
 #define SPI_RDY_GPIO_Port GPIOB
 #define SPI_RDY_EXTI_IRQn EXTI7_IRQn
