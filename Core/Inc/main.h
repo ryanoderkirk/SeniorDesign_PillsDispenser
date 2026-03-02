@@ -54,8 +54,6 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
-RTC_HandleTypeDef* getRTCHandle();
-SPI_HandleTypeDef* getFlashSPIHandle();
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -73,8 +71,10 @@ SPI_HandleTypeDef* getFlashSPIHandle();
 #define DEBUG_USART_TX_GPIO_Port GPIOD
 #define DEBUG_USART_RX_Pin GPIO_PIN_9
 #define DEBUG_USART_RX_GPIO_Port GPIOD
-#define Flash_CS_Pin GPIO_PIN_12
-#define Flash_CS_GPIO_Port GPIOG
+#define BOOT2_Pin GPIO_PIN_3
+#define BOOT2_GPIO_Port GPIOD
+#define SPI_CS3_Pin GPIO_PIN_4
+#define SPI_CS3_GPIO_Port GPIOD
 #define SPI_RDY_Pin GPIO_PIN_7
 #define SPI_RDY_GPIO_Port GPIOB
 #define SPI_RDY_EXTI_IRQn EXTI7_IRQn
