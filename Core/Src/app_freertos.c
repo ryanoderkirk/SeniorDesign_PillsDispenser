@@ -23,6 +23,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include "logging.h"
+#include "filesystem.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -107,7 +109,11 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    LogEntry_t log;
+    fillLogTimestamp(&log);
+    listLogFiles();
+
+    osDelay(10000);
   }
   /* USER CODE END defaultTask */
 }

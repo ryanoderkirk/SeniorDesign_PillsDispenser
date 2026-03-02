@@ -43,6 +43,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 
+RTC_HandleTypeDef hrtc;
+
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi4;
 DMA_HandleTypeDef handle_GPDMA1_Channel1;
@@ -62,6 +64,7 @@ static void MX_GPDMA1_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_SPI4_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_RTC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -104,6 +107,7 @@ int main(void)
   MX_USART3_UART_Init();
   MX_SPI4_Init();
   MX_SPI1_Init();
+  MX_RTC_Init();
   MX_ST67W6X_Init();
   /* USER CODE BEGIN 2 */
   /* USER CODE END 2 */
@@ -147,10 +151,12 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_CSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI
+                              |RCC_OSCILLATORTYPE_CSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSIDiv = RCC_HSI_DIV2;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.CSIState = RCC_CSI_ON;
   RCC_OscInitStruct.CSICalibrationValue = RCC_CSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
@@ -216,6 +222,54 @@ static void MX_GPDMA1_Init(void)
   /* USER CODE BEGIN GPDMA1_Init 2 */
 
   /* USER CODE END GPDMA1_Init 2 */
+
+}
+
+/**
+  * @brief RTC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_RTC_Init(void)
+{
+
+  /* USER CODE BEGIN RTC_Init 0 */
+
+  /* USER CODE END RTC_Init 0 */
+
+  RTC_PrivilegeStateTypeDef privilegeState = {0};
+
+  /* USER CODE BEGIN RTC_Init 1 */
+
+  /* USER CODE END RTC_Init 1 */
+
+  /** Initialize RTC Only
+  */
+  hrtc.Instance = RTC;
+  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
+  hrtc.Init.AsynchPrediv = 127;
+  hrtc.Init.SynchPrediv = 255;
+  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPutRemap = RTC_OUTPUT_REMAP_NONE;
+  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+  hrtc.Init.OutPutPullUp = RTC_OUTPUT_PULLUP_NONE;
+  hrtc.Init.BinMode = RTC_BINARY_NONE;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  privilegeState.rtcPrivilegeFull = RTC_PRIVILEGE_FULL_NO;
+  privilegeState.backupRegisterPrivZone = RTC_PRIVILEGE_BKUP_ZONE_NONE;
+  privilegeState.backupRegisterStartZone2 = RTC_BKP_DR0;
+  privilegeState.backupRegisterStartZone3 = RTC_BKP_DR0;
+  if (HAL_RTCEx_PrivilegeModeSet(&hrtc, &privilegeState) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RTC_Init 2 */
+
+  /* USER CODE END RTC_Init 2 */
 
 }
 
@@ -445,6 +499,45 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+RTC_HandleTypeDef* getRTCHandle() {
+  return &hrtc;
+}
+
+SPI_HandleTypeDef* getFlashSPIHandle() {
+  return &hspi1;
+}
+
+void get_rtc_timestamp(char *buffer) {
+    RTC_TimeTypeDef gTime;
+    RTC_DateTypeDef gDate;
+
+    // 1. Read Time FIRST (Locks shadow registers)
+    HAL_RTC_GetTime(&hrtc, &gTime, RTC_FORMAT_BIN);
+
+    // 2. Read Date SECOND (Unlocks shadow registers)
+    HAL_RTC_GetDate(&hrtc, &gDate, RTC_FORMAT_BIN);
+
+    // 3. Format as YYMMDDHHMMSS
+    sprintf(buffer, "%02d%02d%02d%02d%02d%02d",
+            gDate.Year, gDate.Month, gDate.Date,
+            gTime.Hours, gTime.Minutes, gTime.Seconds);
+}
+
+
+void get_rtc_YYMMDD(char *buffer) {
+    RTC_TimeTypeDef gTime;
+    RTC_DateTypeDef gDate;
+
+    // 1. Read Time FIRST (Locks shadow registers)
+    HAL_RTC_GetTime(&hrtc, &gTime, RTC_FORMAT_BIN);
+
+    // 2. Read Date SECOND (Unlocks shadow registers)
+    HAL_RTC_GetDate(&hrtc, &gDate, RTC_FORMAT_BIN);
+
+    // 3. Format as YYMMDD
+    sprintf(buffer, "%02d%02d%02d",
+            gDate.Year, gDate.Month, gDate.Date);
+}
 /* USER CODE END 4 */
 
 /**

@@ -54,6 +54,8 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
+RTC_HandleTypeDef* getRTCHandle();
+SPI_HandleTypeDef* getFlashSPIHandle();
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
