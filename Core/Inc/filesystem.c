@@ -137,7 +137,7 @@ int (block_program)(const struct lfs_config *c, lfs_block_t block,
 
     // Wait 200ms before failing write
     for(uint32_t i = 0;i<201;i++) {
-        HAL_Delay(1);
+        osDelay(1);
         if(flashIsReady()) {
             return LFS_ERR_OK;
         }
@@ -180,7 +180,7 @@ int (block_erase)(const struct lfs_config *c, lfs_block_t block) {
 
     // Wait 1000ms before failing write
     for(uint32_t i = 0;i<201;i++) {
-        HAL_Delay(5);
+        osDelay(5);
         if(flashIsReady()) {
             return LFS_ERR_OK;
         }
