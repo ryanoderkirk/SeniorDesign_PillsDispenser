@@ -51,7 +51,7 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 128 * 4
+  .stack_size = 1024 * 4
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -111,6 +111,7 @@ void StartDefaultTask(void *argument)
   {
     LogEntry_t log;
     fillLogTimestamp(&log);
+    filesystemInit();
     listLogFiles();
 
     osDelay(10000);
