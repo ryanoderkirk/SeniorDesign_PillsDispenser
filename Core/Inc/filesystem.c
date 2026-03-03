@@ -35,11 +35,9 @@ static const struct lfs_config cfg = {
     .block_cycles = 500,
 };
 
-SPI_HandleTypeDef* getFlashSPIHandle(void);
 
 int32_t flashIsReady() {
     SPI_HandleTypeDef *hspi = getFlashSPIHandle();
-
     uint8_t statusRegister = 0;
     uint8_t cmd = FLASH_CMD_READ_SR1;
 
@@ -56,6 +54,7 @@ int32_t flashIsReady() {
     HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
 
     return !(statusRegister & 0x01);
+
 }
 
 // Read a region in a block. Negative error codes are propagated
@@ -65,37 +64,47 @@ int block_read (const struct lfs_config *c, lfs_block_t block,
 
     SPI_HandleTypeDef *hspi = getFlashSPIHandle();
 
-    // 1. Calculate the physical address on the flash chip
-    // Physical Address = (Block Number * Block Size) + Offset
-    uint32_t addr = (block * c->block_size) + off;
+    osMutexId_t* flashMutex = getFlashMutex();
+    if (osMutexAcquire(*flashMutex, 100) == osOK) {
+        // 1. Calculate the physical address on the flash chip
+        // Physical Address = (Block Number * Block Size) + Offset
+        uint32_t addr = (block * c->block_size) + off;
 
-    // 2. Prepare the Read Command (0x03) followed by the 24-bit address
-    uint8_t cmd[4];
-    cmd[0] = FLASH_CMD_PAGE_READ;               // Normal Read Instruction
-    cmd[1] = (addr >> 16) & 0xFF; // Address High Byte (MSB)
-    cmd[2] = (addr >> 8)  & 0xFF; // Address Middle Byte
-    cmd[3] = (addr)       & 0xFF; // Address Low Byte (LSB)
+        // 2. Prepare the Read Command (0x03) followed by the 24-bit address
+        uint8_t cmd[4];
+        cmd[0] = FLASH_CMD_PAGE_READ;               // Normal Read Instruction
+        cmd[1] = (addr >> 16) & 0xFF; // Address High Byte (MSB)
+        cmd[2] = (addr >> 8)  & 0xFF; // Address Middle Byte
+        cmd[3] = (addr)       & 0xFF; // Address Low Byte (LSB)
 
-    // 3. Select the Flash Chip (/CS Low)
-    HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
+        // 3. Select the Flash Chip (/CS Low)
+        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
 
-    // 4. Send the 4-byte command/address packet
-    if (HAL_SPI_Transmit(hspi, cmd, 4, 100) != HAL_OK) {
+        // 4. Send the 4-byte command/address packet
+        if (HAL_SPI_Transmit(hspi, cmd, 4, 100) != HAL_OK) {
+            HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
+        }
+
+        uint32_t err = 0;
+        // 5. Receive the requested data
+        // The SPI clock continues to toggle, and the flash shifts bits out on MISO
+        if ((err = HAL_SPI_Receive(hspi, (uint8_t*)buffer, size, 1000)) != HAL_OK) {
+            HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
+        }
+
+        // 6. Deselect the Flash Chip (/CS High)
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-        return LFS_ERR_IO;
+
+        osMutexRelease(*flashMutex);
+        return LFS_ERR_OK;
     }
-
-    // 5. Receive the requested data
-    // The SPI clock continues to toggle, and the flash shifts bits out on MISO
-    if (HAL_SPI_Receive(hspi, (uint8_t*)buffer, size, 1000) != HAL_OK) {
-        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-        return LFS_ERR_IO;
+    else {
+        return -1;
     }
-
-    // 6. Deselect the Flash Chip (/CS High)
-    HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-
-    return LFS_ERR_OK;
 }
 
 // Program a region in a block. The block must have previously
@@ -107,43 +116,59 @@ int (block_program)(const struct lfs_config *c, lfs_block_t block,
     SPI_HandleTypeDef *hspi = getFlashSPIHandle();
     uint8_t wrenCmd = FLASH_CMD_WREN;
 
-    // Write Enable
-    HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
-    if (HAL_SPI_Transmit(hspi, &wrenCmd, 1, 100) != HAL_OK) {
-        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-        return LFS_ERR_IO;
-    }
-    HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-
-    // Physical Address = (Block Number * Block Size) + Offset
-    uint32_t addr = (block * c->block_size) + off;
-    uint8_t cmd[4];
-    cmd[0] = FLASH_CMD_PAGE_PROGRAM;
-    cmd[1] = (addr >> 16) & 0xFF; // Address High Byte (MSB)
-    cmd[2] = (addr >> 8)  & 0xFF; // Address Middle Byte
-    cmd[3] = (addr)       & 0xFF; // Address Low Byte (LSB)
-
-    // Write Command
-    HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
-    if (HAL_SPI_Transmit(hspi, cmd, 4, 10) != HAL_OK) {
-        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-        return LFS_ERR_IO;
-    }
-    if (HAL_SPI_Transmit(hspi, (uint8_t*)buffer, size, 100) != HAL_OK) {
-        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-        return LFS_ERR_IO;
-    }
-    HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-
-    // Wait 200ms before failing write
-    for(uint32_t i = 0;i<201;i++) {
-        osDelay(1);
-        if(flashIsReady()) {
-            return LFS_ERR_OK;
+    osMutexId_t* flashMutex = getFlashMutex();
+    if (osMutexAcquire(*flashMutex, 100) == osOK) {
+        // Write Enable
+        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
+        if (HAL_SPI_Transmit(hspi, &wrenCmd, 1, 100) != HAL_OK) {
+            HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
         }
+        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
+
+        // Physical Address = (Block Number * Block Size) + Offset
+        uint32_t addr = (block * c->block_size) + off;
+        uint8_t cmd[4];
+        cmd[0] = FLASH_CMD_PAGE_PROGRAM;
+        cmd[1] = (addr >> 16) & 0xFF; // Address High Byte (MSB)
+        cmd[2] = (addr >> 8)  & 0xFF; // Address Middle Byte
+        cmd[3] = (addr)       & 0xFF; // Address Low Byte (LSB)
+
+        // Write Command
+        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
+        if (HAL_SPI_Transmit(hspi, cmd, 4, 10) != HAL_OK) {
+            HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
+        }
+        if (HAL_SPI_Transmit(hspi, (uint8_t*)buffer, size, 100) != HAL_OK) {
+            HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
+        }
+        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
+
+        // Wait 200ms before failing write
+        for(uint32_t i = 0;i<201;i++) {
+            osDelay(10);
+            int status = flashIsReady();
+            if(status == 1) {
+                osMutexRelease(*flashMutex);
+                return LFS_ERR_OK;
+            }
+            if (status == -1) {
+                break;
+            }
+        }
+
+        osMutexRelease(*flashMutex);
+        return LFS_ERR_IO;
+    }
+    else {
+        return -1;
     }
 
-    return LFS_ERR_IO;
 }
 
 // Erase a block. A block must be erased before being programmed.
@@ -155,38 +180,51 @@ int (block_erase)(const struct lfs_config *c, lfs_block_t block) {
     SPI_HandleTypeDef *hspi = getFlashSPIHandle();
     uint8_t wrenCmd = FLASH_CMD_WREN;
 
-    // Write Enable
-    HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
-    if (HAL_SPI_Transmit(hspi, &wrenCmd, 1, 100) != HAL_OK) {
-        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-        return LFS_ERR_IO;
-    }
-    HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-
-    uint32_t addr = (block * c->block_size);
-    uint8_t cmd[4];
-    cmd[0] = FLASH_CMD_SECTOR_ERASE;
-    cmd[1] = (addr >> 16) & 0xFF; // Address High Byte (MSB)
-    cmd[2] = (addr >> 8)  & 0xFF; // Address Middle Byte
-    cmd[3] = (addr)       & 0xFF; // Address Low Byte (LSB)
-
-    // Write Command
-    HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
-    if (HAL_SPI_Transmit(hspi, cmd, 4, 10) != HAL_OK) {
-        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-        return LFS_ERR_IO;
-    }
-    HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-
-    // Wait 1000ms before failing write
-    for(uint32_t i = 0;i<201;i++) {
-        osDelay(5);
-        if(flashIsReady()) {
-            return LFS_ERR_OK;
+    osMutexId_t* flashMutex = getFlashMutex();
+    if (osMutexAcquire(*flashMutex, 100) == osOK) {
+        // Write Enable
+        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
+        if (HAL_SPI_Transmit(hspi, &wrenCmd, 1, 100) != HAL_OK) {
+            HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
         }
-    }
+        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
 
-    return LFS_ERR_IO;
+        uint32_t addr = (block * c->block_size);
+        uint8_t cmd[4];
+        cmd[0] = FLASH_CMD_SECTOR_ERASE;
+        cmd[1] = (addr >> 16) & 0xFF; // Address High Byte (MSB)
+        cmd[2] = (addr >> 8)  & 0xFF; // Address Middle Byte
+        cmd[3] = (addr)       & 0xFF; // Address Low Byte (LSB)
+
+        // Write Command
+        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
+        if (HAL_SPI_Transmit(hspi, cmd, 4, 10) != HAL_OK) {
+            HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
+        }
+        HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
+
+        // Wait 1000ms before failing write
+        for(uint32_t i = 0;i<201;i++) {
+            osDelay(5);
+            int status = flashIsReady();
+            if(status == 1) {
+                osMutexRelease(*flashMutex);
+                return LFS_ERR_OK;
+            }
+            if(status == -1) {
+                break;
+            }
+        }
+        osMutexRelease(*flashMutex);
+        return LFS_ERR_IO;
+    }
+    else {
+        return -1;
+    }
 }
 
 // Sync the state of the underlying block device. Negative error codes

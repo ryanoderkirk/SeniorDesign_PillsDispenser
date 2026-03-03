@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "cmsis_os2.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -54,6 +54,8 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
+
+osMutexId_t* getFlashMutex();
 RTC_HandleTypeDef* getRTCHandle();
 SPI_HandleTypeDef* getFlashSPIHandle();
 /* USER CODE END EFP */

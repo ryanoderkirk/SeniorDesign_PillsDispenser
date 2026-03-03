@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os2.h"
 #include "app_st67w6x.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -53,6 +52,14 @@ DMA_HandleTypeDef handle_GPDMA1_Channel0;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
+osMutexId_t flashMutex;
+
+const osMutexAttr_t flashMutex_attributes = {
+  "flashMutex",                          // Name
+  osMutexRecursive | osMutexPrioInherit, // Attributes
+  NULL,                                  // Memory for control block
+  0U                                     // Size of control block
+};
 
 /* USER CODE END PV */
 
@@ -67,6 +74,7 @@ static void MX_SPI1_Init(void);
 static void MX_RTC_Init(void);
 /* USER CODE BEGIN PFP */
 
+int initFlashMutex(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -109,6 +117,7 @@ int main(void)
   MX_SPI1_Init();
   MX_RTC_Init();
   MX_ST67W6X_Init();
+  initFlashMutex();
   /* USER CODE BEGIN 2 */
   /* USER CODE END 2 */
 
@@ -296,7 +305,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -432,6 +441,7 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
@@ -446,7 +456,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(CHIP_EN_GPIO_Port, CHIP_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : SPI_CS_Pin */
   GPIO_InitStruct.Pin = SPI_CS_Pin;
@@ -479,7 +489,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = Flash_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
   HAL_GPIO_Init(Flash_CS_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : SPI_RDY_Pin */
@@ -505,6 +515,19 @@ RTC_HandleTypeDef* getRTCHandle() {
 
 SPI_HandleTypeDef* getFlashSPIHandle() {
   return &hspi1;
+}
+
+
+int initFlashMutex(void) {
+  flashMutex = osMutexNew(&flashMutex_attributes);
+    if (flashMutex == NULL) {
+        return -1;
+    }
+  return 0;
+}
+
+osMutexId_t* getFlashMutex() {
+  return &flashMutex;
 }
 
 void get_rtc_timestamp(char *buffer) {
