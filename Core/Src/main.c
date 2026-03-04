@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os2.h"
 #include "app_st67w6x.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -117,8 +118,8 @@ int main(void)
   MX_SPI1_Init();
   MX_RTC_Init();
   MX_ST67W6X_Init();
-  initFlashMutex();
   /* USER CODE BEGIN 2 */
+  initFlashMutex();
   /* USER CODE END 2 */
 
   /* Init scheduler */

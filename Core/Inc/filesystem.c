@@ -81,7 +81,7 @@ int block_read (const struct lfs_config *c, lfs_block_t block,
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
 
         // 4. Send the 4-byte command/address packet
-        if (HAL_SPI_Transmit(hspi, cmd, 4, 100) != HAL_OK) {
+        if (HAL_SPI_Transmit(hspi, cmd, 4, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
             osMutexRelease(*flashMutex);
             return LFS_ERR_IO;
@@ -117,10 +117,10 @@ int (block_program)(const struct lfs_config *c, lfs_block_t block,
     uint8_t wrenCmd = FLASH_CMD_WREN;
 
     osMutexId_t* flashMutex = getFlashMutex();
-    if (osMutexAcquire(*flashMutex, 100) == osOK) {
+    if (osMutexAcquire(*flashMutex, 1000) == osOK) {
         // Write Enable
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
-        if (HAL_SPI_Transmit(hspi, &wrenCmd, 1, 100) != HAL_OK) {
+        if (HAL_SPI_Transmit(hspi, &wrenCmd, 1, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
             osMutexRelease(*flashMutex);
             return LFS_ERR_IO;
@@ -137,12 +137,12 @@ int (block_program)(const struct lfs_config *c, lfs_block_t block,
 
         // Write Command
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
-        if (HAL_SPI_Transmit(hspi, cmd, 4, 10) != HAL_OK) {
+        if (HAL_SPI_Transmit(hspi, cmd, 4, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
             osMutexRelease(*flashMutex);
             return LFS_ERR_IO;
         }
-        if (HAL_SPI_Transmit(hspi, (uint8_t*)buffer, size, 100) != HAL_OK) {
+        if (HAL_SPI_Transmit(hspi, (uint8_t*)buffer, size, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
             osMutexRelease(*flashMutex);
             return LFS_ERR_IO;
@@ -184,7 +184,7 @@ int (block_erase)(const struct lfs_config *c, lfs_block_t block) {
     if (osMutexAcquire(*flashMutex, 100) == osOK) {
         // Write Enable
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
-        if (HAL_SPI_Transmit(hspi, &wrenCmd, 1, 100) != HAL_OK) {
+        if (HAL_SPI_Transmit(hspi, &wrenCmd, 1, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
             osMutexRelease(*flashMutex);
             return LFS_ERR_IO;
@@ -200,7 +200,7 @@ int (block_erase)(const struct lfs_config *c, lfs_block_t block) {
 
         // Write Command
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
-        if (HAL_SPI_Transmit(hspi, cmd, 4, 10) != HAL_OK) {
+        if (HAL_SPI_Transmit(hspi, cmd, 4, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
             osMutexRelease(*flashMutex);
             return LFS_ERR_IO;
@@ -238,6 +238,22 @@ int (block_sync)(const struct lfs_config *c) {
 // Mount file system if already formatted
 // If not already formatted, format then mount
 int filesystemInit() {
+    // 1. Erase
+    int err = block_erase(&cfg, 0);
+    LogInfo("Erase status: %d\r\n", err); // Should be 0 (LFS_ERR_OK)
+
+    // 2. Program
+    uint8_t write_buf[] = {1, 2, 3};
+    err = block_program(&cfg, 0, 0, write_buf, 3);
+    LogInfo("Program status: %d\r\n", err); // If this is -5, the RTOS killed it!
+
+    // 3. Read
+    uint8_t test_buf[10] = {0}; // Init to 0 to flush stack garbage
+    err = block_read(&cfg, 0, 0, test_buf, 10);
+    LogInfo("Read status: %d\r\n", err);
+    LogInfo("Data: %d, %d, %d\r\n", test_buf[0], test_buf[1], test_buf[2]);
+
+
     // mount the filesystem
     int result = lfs_mount(&lfs, &cfg);
 
