@@ -155,6 +155,12 @@ HttpServer_response_t http_server_responses[] =
   {INDEX_HTML,      "GET / ",                                     response_index_html},
   {INDEX_HTML,      "GET /log",                                     example_log_response},
   {INDEX_HTML,      "PUT /log",                                     example_put_response},
+  {INDEX_HTML,      "GET /config",                                     example_log_response},
+  {INDEX_HTML,      "PUT /config",                                     example_put_response},
+  {INDEX_HTML,      "GET /time",                                     example_log_response},
+  {INDEX_HTML,      "PUT /time",                                     example_put_response},
+  {INDEX_HTML,      "GET /date",                                     example_log_response},
+  {INDEX_HTML,      "PUT /date",                                     example_put_response},
 };
 
 /* USER CODE BEGIN PV */
