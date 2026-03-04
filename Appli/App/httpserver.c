@@ -142,11 +142,19 @@ char example_log_response[] =
   "{\"logs\":[{\"category\":\"dispense\",\"time\":\"4PM\",\"channels\":\"1,2,3,4\"},{\"category\":\"containerOpened\",\"time\":\"4PM\",\"channels\":\"1\"},{\"category\":\"missedDispense\",\"time\":\"4PM\",\"channels\":\"2\"}]}"
 };
 
+char example_put_response[] =
+{
+  "HTTP/1.1 200 OK\r\n"
+  "Content-Type: application/json\r\n"
+  "\r\n"
+  "{\"logput\":[{\"category\":\"dispense\",\"time\":\"4PM\",\"channels\":\"1,2,3,4\"},{\"category\":\"containerOpened\",\"time\":\"4PM\",\"channels\":\"1\"},{\"category\":\"missedDispense\",\"time\":\"4PM\",\"channels\":\"2\"}]}"
+};
 /** Response content depending on the request */
 HttpServer_response_t http_server_responses[] =
 {
   {INDEX_HTML,      "GET / ",                                     response_index_html},
   {INDEX_HTML,      "GET /log",                                     example_log_response},
+  {INDEX_HTML,      "PUT /log",                                     example_put_response},
 };
 
 /* USER CODE BEGIN PV */

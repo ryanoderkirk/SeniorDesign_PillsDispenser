@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "cmsis_os2.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -54,6 +54,9 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
+osMutexId_t* getFlashMutex();
+RTC_HandleTypeDef* getRTCHandle();
+SPI_HandleTypeDef* getFlashSPIHandle();
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -71,10 +74,8 @@ void Error_Handler(void);
 #define DEBUG_USART_TX_GPIO_Port GPIOD
 #define DEBUG_USART_RX_Pin GPIO_PIN_9
 #define DEBUG_USART_RX_GPIO_Port GPIOD
-#define BOOT2_Pin GPIO_PIN_3
-#define BOOT2_GPIO_Port GPIOD
-#define SPI_CS3_Pin GPIO_PIN_4
-#define SPI_CS3_GPIO_Port GPIOD
+#define Flash_CS_Pin GPIO_PIN_12
+#define Flash_CS_GPIO_Port GPIOG
 #define SPI_RDY_Pin GPIO_PIN_7
 #define SPI_RDY_GPIO_Port GPIOB
 #define SPI_RDY_EXTI_IRQn EXTI7_IRQn

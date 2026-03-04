@@ -50,8 +50,8 @@
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .priority = (osPriority_t) osPriorityNormal,
-  .stack_size = 128 * 4
+  .priority = (osPriority_t) osPriorityAboveNormal4,
+  .stack_size = 1024 * 4
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -106,12 +106,19 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN defaultTask */
+    LogEntry_t log;
+    fillLogTimestamp(&log);
+    if (filesystemInit() != 0) {
+      LogError("Filesystem init failed\n");
+    }
+    if (initDailyLog() != 0) {
+      LogError("Could not write log file\n");
+    }
+    listLogFiles();
   /* Infinite loop */
   for(;;)
   {
-    LogEntry_t log;
-    fillLogTimestamp(&log);
-    listLogFiles();
+
 
     osDelay(10000);
   }
