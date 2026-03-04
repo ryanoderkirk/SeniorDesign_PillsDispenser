@@ -37,12 +37,12 @@ static const struct lfs_config cfg = {
     .block_cycles = 500,
 };
 
-// Forces the flash chip to accept a write command
+// Send write enable command. Return 0 if flash chip is ready to be written to
 int flash_write_enable(void) {
     SPI_HandleTypeDef *hspi = getFlashSPIHandle();
     uint8_t wrenCmd = FLASH_CMD_WREN;
     uint8_t dummy_rx;
-    
+
     uint8_t tx_buf[2] = {FLASH_CMD_READ_SR1, 0x00};
     uint8_t rx_buf[2] = {0};
 
@@ -58,10 +58,12 @@ int flash_write_enable(void) {
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
 
         if ((rx_buf[1] & 0x02) != 0) {
+
             return 0; // Success! The chip is locked and loaded.
         }
         osDelay(100);
     }
+    LogError("Timeout occured. WEL bit not set");
     return -1; // Timeout. The chip refused to enable writes.
 }
 
@@ -83,24 +85,10 @@ int flash_wait_busy(void) {
         }
         osDelay(5);
     }
+    LogError("Timeout occured. WIP bit not set, flash is busy");
     return -1; // Timeout
 }
 
-int32_t flashIsReady() {
-  SPI_HandleTypeDef *hspi = getFlashSPIHandle();
-  uint8_t tx_buf[2] = {FLASH_CMD_READ_SR1, 0x00};
-  uint8_t rx_buf[2] = {0};
-
-  // Write Enable
-  HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
-  if (HAL_SPI_TransmitReceive(hspi, tx_buf, rx_buf, 2, 100) != HAL_OK) {
-    HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-    return -1;
-  }
-  HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-
-  return !(rx_buf[1] & 0x01);
-}
 
 // Read a region in a block. Negative error codes are propagated
 // to the user.
@@ -112,7 +100,7 @@ int block_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, voi
     osMutexId_t* flashMutex = getFlashMutex();
 
     if (osMutexAcquire(*flashMutex, 1000) == osOK) {
-        // 1. Your instinct applied: Defensive wait before asserting the bus!
+        // Wait to make sure flash is available to be read
         if (flash_wait_busy() != 0) {
             osMutexRelease(*flashMutex);
             return LFS_ERR_IO;
@@ -139,18 +127,18 @@ int block_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, voi
         if (HAL_SPI_TransmitReceive(hspi, tx_buf, rx_buf, 4 + size, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
             osMutexRelease(*flashMutex);
+            LogError("Read command failed");
             return LFS_ERR_IO;
         }
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
 
-        // 5. Extract the payload. 
         // We skip the first 4 bytes of rx_buf because they are just dummy 
-        // responses sent by the flash chip while we were transmitting the command.
         memcpy(buffer, &rx_buf[4], size);
 
         osMutexRelease(*flashMutex);
         return LFS_ERR_OK;
     } else {
+        LogError("Mutex busy");
         return LFS_ERR_IO;
     }
 }
@@ -164,23 +152,22 @@ int block_program(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, 
     SPI_HandleTypeDef *hspi = getFlashSPIHandle();
 
     osMutexId_t* flashMutex = getFlashMutex();
-
     if (osMutexAcquire(*flashMutex, 1000) == osOK) {
-        
-        // 1. Defensive wait: Ensure no background operations are running
+
+        // Ensure no background operations are running
         if (flash_wait_busy() != 0) {
             osMutexRelease(*flashMutex);
             return LFS_ERR_IO;
         }
 
-        // 2. Ironclad Write Enable: Confirm the WEL bit is actually 1
+        // Confirm the WEL bit is actually 1
         if (flash_write_enable() != 0) {
             osMutexRelease(*flashMutex);
             return LFS_ERR_IO;
         }
 
         uint32_t addr = (block * c->block_size) + off;
-        
+
         // 3. STATIC unified buffers: Zero stack overhead!
         // 260 bytes covers the 4-byte command + max 256-byte LittleFS payload
         static uint8_t tx_buf[260];
@@ -200,6 +187,7 @@ int block_program(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, 
         if (HAL_SPI_TransmitReceive(hspi, tx_buf, rx_buf, 4 + size, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
             osMutexRelease(*flashMutex);
+            LogError("Failed to transmit program buffer to flash memory")
             return LFS_ERR_IO;
         }
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
@@ -207,13 +195,14 @@ int block_program(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, 
         // 6. Block until the flash chip physically commits the bits
         if (flash_wait_busy() != 0) {
             osMutexRelease(*flashMutex);
-            return -4;
+            return LFS_ERR_IO;
         }
 
         osMutexRelease(*flashMutex);
         return LFS_ERR_OK;
 
     } else {
+        LogError("Mutex busy");
         return LFS_ERR_IO;
     }
 }
@@ -228,21 +217,18 @@ int block_erase(const struct lfs_config *c, lfs_block_t block) {
     osMutexId_t* flashMutex = getFlashMutex();
 
     if (osMutexAcquire(*flashMutex, 1000) == osOK) {
-        // 1. Defensive wait
         if (flash_wait_busy() != 0) {
             osMutexRelease(*flashMutex);
             return LFS_ERR_IO;
         }
 
-        // 2. Ironclad Write Enable
         if (flash_write_enable() != 0) {
             osMutexRelease(*flashMutex);
             return LFS_ERR_IO;
         }
 
         uint32_t addr = (block * c->block_size);
-        
-        // 3. STATIC unified buffers (Keeps the memory footprint consistent and safe)
+
         static uint8_t tx_buf[4];
         static uint8_t rx_buf[4]; 
 
@@ -256,6 +242,7 @@ int block_erase(const struct lfs_config *c, lfs_block_t block) {
         if (HAL_SPI_TransmitReceive(hspi, tx_buf, rx_buf, 4, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
             osMutexRelease(*flashMutex);
+            LogError("Erase command buffer failed to send");
             return LFS_ERR_IO;
         }
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
@@ -321,9 +308,8 @@ int filetest() {
     uint8_t test_buf2[10] = {0}; // Init to 0 to flush stack garbage
     err = block_read(&cfg, 0, 0, test_buf2, 10);
     if (err !=0)
-    	return -1;
+        return -1;
 
-    // 2. Program
     uint8_t write_buf[] = {4, 5, 6};
     err = block_program(&cfg, 0, 0, write_buf, 3);
     if (err !=0)
@@ -336,7 +322,7 @@ int filetest() {
         return -1;
     if(test_buf[0] != 4)
     {
-    	return -1;
+        return -1;
     }
   }
   return 0;
