@@ -38,7 +38,7 @@ static const struct lfs_config cfg = {
 };
 
 // Send write enable command. Return 0 if flash chip is ready to be written to
-int flash_write_enable(void) {
+static int flash_write_enable(void) {
     SPI_HandleTypeDef *hspi = getFlashSPIHandle();
     uint8_t wrenCmd = FLASH_CMD_WREN;
     uint8_t dummy_rx;
@@ -68,7 +68,7 @@ int flash_write_enable(void) {
 }
 
 // Blocks until the flash chip is completely idle
-int flash_wait_busy(void) {
+static int flash_wait_busy(void) {
     SPI_HandleTypeDef *hspi = getFlashSPIHandle();
     uint8_t tx_buf[2] = {FLASH_CMD_READ_SR1, 0x00};
     uint8_t rx_buf[2] = {0};
@@ -92,7 +92,6 @@ int flash_wait_busy(void) {
 
 // Read a region in a block. Negative error codes are propagated
 // to the user.
-
 int block_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, void *buffer, lfs_size_t size) {
 
     SPI_HandleTypeDef *hspi = getFlashSPIHandle();
@@ -182,17 +181,16 @@ int block_program(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, 
         // Stitch the data payload right behind the address
         memcpy(&tx_buf[4], buffer, size);
 
-        // 5. ONE SINGLE unbroken transmission to prevent the H5 SPE toggle glitch
+        // ONE SINGLE unbroken transmission to prevent the H5 SPE toggle glitch
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
         if (HAL_SPI_TransmitReceive(hspi, tx_buf, rx_buf, 4 + size, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
             osMutexRelease(*flashMutex);
-            LogError("Failed to transmit program buffer to flash memory")
+            LogError("Failed to transmit program buffer to flash memory");
             return LFS_ERR_IO;
         }
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
 
-        // 6. Block until the flash chip physically commits the bits
         if (flash_wait_busy() != 0) {
             osMutexRelease(*flashMutex);
             return LFS_ERR_IO;
@@ -237,7 +235,7 @@ int block_erase(const struct lfs_config *c, lfs_block_t block) {
         tx_buf[2] = (addr >> 8)  & 0xFF; // Address Middle Byte
         tx_buf[3] = (addr)       & 0xFF; // Address Low Byte (LSB)
 
-        // 4. Execute the erase command as a single Full-Duplex transaction
+        // Execute the erase command as a single Full-Duplex transaction
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
         if (HAL_SPI_TransmitReceive(hspi, tx_buf, rx_buf, 4, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
@@ -247,7 +245,6 @@ int block_erase(const struct lfs_config *c, lfs_block_t block) {
         }
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
 
-        // 5. Block until the sector is completely wiped back to 0xFF
         if (flash_wait_busy() != 0) {
             osMutexRelease(*flashMutex);
             return LFS_ERR_IO;
@@ -273,8 +270,6 @@ int(block_sync)(const struct lfs_config *c) {
 // Mount file system if already formatted
 // If not already formatted, format then mount
 int filesystemInit() {
-  SPI_HandleTypeDef *hspi = getFlashSPIHandle();
-
   // mount the filesystem
   int result = lfs_mount(&lfs, &cfg);
 
