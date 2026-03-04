@@ -2,6 +2,7 @@
  * Filesystem implementation logic
  */
 #include "filesystem.h"
+#include "lfs.h"
 #include "logging.h"
 #include "main.h"
 #include <stdint.h>
@@ -108,10 +109,13 @@ int block_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, voi
 
     SPI_HandleTypeDef *hspi = getFlashSPIHandle();
 
-    if (1) {
+    osMutexId_t* flashMutex = getFlashMutex();
+
+    if (osMutexAcquire(*flashMutex, 1000) == osOK) {
         // 1. Your instinct applied: Defensive wait before asserting the bus!
         if (flash_wait_busy() != 0) {
-            return -1;
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
         }
 
         uint32_t addr = (block * c->block_size) + off;
@@ -134,7 +138,8 @@ int block_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, voi
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
         if (HAL_SPI_TransmitReceive(hspi, tx_buf, rx_buf, 4 + size, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-            return -2;
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
         }
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
 
@@ -143,9 +148,10 @@ int block_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, voi
         // responses sent by the flash chip while we were transmitting the command.
         memcpy(buffer, &rx_buf[4], size);
 
+        osMutexRelease(*flashMutex);
         return LFS_ERR_OK;
     } else {
-        return -1;
+        return LFS_ERR_IO;
     }
 }
 
@@ -157,16 +163,20 @@ int block_program(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, 
 
     SPI_HandleTypeDef *hspi = getFlashSPIHandle();
 
-    if (1) { // Placeholder for your osMutexAcquire
+    osMutexId_t* flashMutex = getFlashMutex();
+
+    if (osMutexAcquire(*flashMutex, 1000) == osOK) {
         
         // 1. Defensive wait: Ensure no background operations are running
         if (flash_wait_busy() != 0) {
-            return -1;
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
         }
 
         // 2. Ironclad Write Enable: Confirm the WEL bit is actually 1
         if (flash_write_enable() != 0) {
-            return -2;
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
         }
 
         uint32_t addr = (block * c->block_size) + off;
@@ -189,19 +199,22 @@ int block_program(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, 
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
         if (HAL_SPI_TransmitReceive(hspi, tx_buf, rx_buf, 4 + size, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-            return -3;
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
         }
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
 
         // 6. Block until the flash chip physically commits the bits
         if (flash_wait_busy() != 0) {
+            osMutexRelease(*flashMutex);
             return -4;
         }
-        
+
+        osMutexRelease(*flashMutex);
         return LFS_ERR_OK;
 
     } else {
-        return -1;
+        return LFS_ERR_IO;
     }
 }
 
@@ -212,16 +225,19 @@ int block_program(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, 
 int block_erase(const struct lfs_config *c, lfs_block_t block) {
     SPI_HandleTypeDef *hspi = getFlashSPIHandle();
 
-    if (1) { // Placeholder for your osMutexAcquire
-        
+    osMutexId_t* flashMutex = getFlashMutex();
+
+    if (osMutexAcquire(*flashMutex, 1000) == osOK) {
         // 1. Defensive wait
         if (flash_wait_busy() != 0) {
-            return -1;
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
         }
 
         // 2. Ironclad Write Enable
         if (flash_write_enable() != 0) {
-            return -2;
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
         }
 
         uint32_t addr = (block * c->block_size);
@@ -239,19 +255,22 @@ int block_erase(const struct lfs_config *c, lfs_block_t block) {
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
         if (HAL_SPI_TransmitReceive(hspi, tx_buf, rx_buf, 4, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-            return -3;
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
         }
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
 
         // 5. Block until the sector is completely wiped back to 0xFF
         if (flash_wait_busy() != 0) {
-            return -4;
+            osMutexRelease(*flashMutex);
+            return LFS_ERR_IO;
         }
-        
+
+        osMutexRelease(*flashMutex);
         return LFS_ERR_OK;
 
     } else {
-        return -1;
+        return LFS_ERR_IO;
     }
 }
 
