@@ -111,6 +111,7 @@ void StartDefaultTask(void *argument)
   {
     LogEntry_t log;
     fillLogTimestamp(&log);
+    filetest();
     filesystemInit();
     listLogFiles();
 
