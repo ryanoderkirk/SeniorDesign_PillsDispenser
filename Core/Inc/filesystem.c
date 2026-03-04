@@ -288,23 +288,7 @@ int(block_sync)(const struct lfs_config *c) {
 int filesystemInit() {
   SPI_HandleTypeDef *hspi = getFlashSPIHandle();
 
-  // Debug hardware: Read JEDEC ID (0x9F)
-  uint8_t id_buf[4] = {0x9F, 0, 0, 0};
-  uint8_t id_rx[4] = {0};
-  HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
-  HAL_SPI_TransmitReceive(hspi, id_buf, id_rx, 4, 1000);
-  HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
-
-  LogInfo("FLASH DEBUG: JEDEC = %02X %02X %02X\r\n", id_rx[1], id_rx[2],
-          id_rx[3]);
-
-  if (id_rx[1] == 0x00 && id_rx[2] == 0x00) {
-    LogInfo("ERROR: Flash returning 0x00! Check MISO (PG9) wiring, VDDIO2, and "
-            "Chip Select.\r\n");
-  }
-
   // mount the filesystem
-  int test = lfs_format(&lfs, &cfg);
   int result = lfs_mount(&lfs, &cfg);
 
   // reformat if we can't mount the filesystem
