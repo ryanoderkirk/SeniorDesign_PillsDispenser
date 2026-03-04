@@ -68,7 +68,7 @@ typedef enum
 #define LOG_OUTPUT_MODE             LOG_OUTPUT_UART
 
 /** SSID of the Soft-AP */
-#define WIFI_SAP_SSID               "ST67W6X_AP"
+#define WIFI_SAP_SSID               "Pill Dispenser"
 
 /** Password of the Soft-AP */
 #define WIFI_SAP_PASSWORD           "12345678"
