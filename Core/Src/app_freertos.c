@@ -106,14 +106,19 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN defaultTask */
+    LogEntry_t log;
+    fillLogTimestamp(&log);
+    if (filesystemInit() != 0) {
+      LogError("Filesystem init failed\n");
+    }
+    if (initDailyLog() != 0) {
+      LogError("Could not write log file\n");
+    }
+    listLogFiles();
   /* Infinite loop */
   for(;;)
   {
-    LogEntry_t log;
-    fillLogTimestamp(&log);
-    filetest();
-    filesystemInit();
-    listLogFiles();
+
 
     osDelay(10000);
   }

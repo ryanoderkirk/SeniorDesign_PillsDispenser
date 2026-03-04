@@ -360,10 +360,10 @@ int listLogFiles() {
     return -1;
 
   while (lfs_dir_read(&lfs, &dir, &info) > 0) {
-    LogInfo("%s\n", info.name);
-    // HAL_UART_Transmit(getDebugHandle(), (uint8_t*)info.name,
-    // strlen(info.name), 100); HAL_UART_Transmit(getDebugHandle(),
-    // (uint8_t*)"\r\n", 3, 100);
+	  if (info.name[0] == '.') {
+		  continue;
+	  }
+	  LogInfo("%s\n", info.name);
   }
 
   lfs_dir_close(&lfs, &dir);
