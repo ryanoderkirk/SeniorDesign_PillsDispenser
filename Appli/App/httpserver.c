@@ -563,6 +563,52 @@ static void http_process_response(int32_t client, char *recv_buffer)
     response_data = full_response;
   }
 
+  if (response == GET_CONFIG) /* Request not recognized, return 404 error */
+  {
+    int channel = -1;
+
+    // 1. Find the first space (after "GET")
+    char *uri_start = strchr(recv_buffer, ' ');
+    if (uri_start == NULL)
+      return;
+    uri_start++; // Move past the space to the '/'
+
+    // 2. Find the second space (before "HTTP/1.1")
+    char *uri_end = strchr(uri_start, ' ');
+    if (uri_end == NULL)
+      return;
+
+    // This turns "/config?ch=1 HTTP/1.1" into "/config?ch=1\0"
+    char original_char = *uri_end;
+    *uri_end = '\0';
+
+    // 4. Now use strchr to find your '?' within the isolated URI
+    char *query = strchr(uri_start, '?');
+    if (query) {
+      sscanf(query, "?ch=%d", &channel);
+    }
+    *uri_end = original_char;
+
+    Config_t config;
+
+    if (channel > 0 && channel < 5) {
+      if (readConfig(&config, channel) != 0) {
+        response_data = (char *)response_error_404_html;
+      }
+      else {
+        snprintf(response_body, sizeof(response_body),
+                 "CONFIG | Channel: %d | Count: %d | Pill: %s", config.channel,
+                 config.pillCount, config.pillName);
+        build_http_200_response(full_response, sizeof(full_response),
+                                response_body);
+        response_data = full_response;
+      }
+    }
+    else {
+        response_data = (char *)response_error_404_html;
+    }
+  }
+
   /* Send the response */
   if (1 == http_server_write(client, response_data, strlen(response_data)))
   {
