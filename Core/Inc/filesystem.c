@@ -338,7 +338,6 @@ int filetest() {
 int initDailyLog() {
 
   int result = 0;
-  lfs_dir_t dir = {0};
 
   uint8_t logName[7];
   get_rtc_YYMMDD(logName);
@@ -471,12 +470,12 @@ int readLog(LogEntry_t *log) {
 int writeConfig(Config_t* config) {
 
     int result = 0;
-    const char *log_files[] = {"/logs/one", "/logs/two", "/logs/three", "/logs/four"};
+    const char *config_files[] = {"/config/one", "/config/two", "/config/three", "/config/four"};
     if (config->channel > 4 || config->channel < 1) {
         return -1;
     }
 
-    result = lfs_file_open(&lfs, &file, log_files[config->channel - 1],
+    result = lfs_file_open(&lfs, &file, config_files[config->channel - 1],
                            LFS_O_CREAT | LFS_O_RDWR | LFS_O_TRUNC);
     if (result != 0)
       return -1;
@@ -496,13 +495,13 @@ int writeConfig(Config_t* config) {
 
 int readConfig(Config_t* config, int channel) {
   int result = 0;
-  const char *log_files[] = {"/logs/one", "/logs/two", "/logs/three",
-                             "/logs/four"};
+  const char *config_files[] = {"/config/one", "/config/two", "/config/three",
+                             "/config/four"};
   if (channel > 4 || channel < 1) {
     return -1;
   }
 
-  result = lfs_file_open(&lfs, &file, log_files[channel - 1], LFS_O_RDONLY);
+  result = lfs_file_open(&lfs, &file, config_files[channel - 1], LFS_O_RDONLY);
   if (result != 0)
     // file not yet created
     return -1;

@@ -57,6 +57,8 @@ void Error_Handler(void);
 osMutexId_t* getFlashMutex();
 RTC_HandleTypeDef* getRTCHandle();
 SPI_HandleTypeDef* getFlashSPIHandle();
+void get_rtc_timestamp(char *buffer);
+void update_system_time(int y, int m, int d, int hh, int mm, int ss);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

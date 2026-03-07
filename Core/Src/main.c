@@ -548,6 +548,10 @@ void get_rtc_timestamp(char *buffer) {
             gTime.Hours, gTime.Minutes, gTime.Seconds);
 }
 
+void get_rtc_typedef(RTC_DateTypeDef *date, RTC_TimeTypeDef *time) {
+  HAL_RTC_GetTime(&hrtc, time, RTC_FORMAT_BIN);
+  HAL_RTC_GetDate(&hrtc, date, RTC_FORMAT_BIN);
+}
 
 void get_rtc_YYMMDD(char *buffer) {
     RTC_TimeTypeDef gTime;
@@ -561,7 +565,43 @@ void get_rtc_YYMMDD(char *buffer) {
 
     // 3. Format as YYMMDD
     sprintf(buffer, "%02d%02d%02d",
+            gTime.Hours, gTime.Minutes, gTime.Seconds);
+}
+
+
+void get_rtc_HHMMSS(char *buffer) {
+    RTC_TimeTypeDef gTime;
+    RTC_DateTypeDef gDate;
+
+    // 1. Read Time FIRST (Locks shadow registers)
+    HAL_RTC_GetTime(&hrtc, &gTime, RTC_FORMAT_BIN);
+
+    // 2. Read Date SECOND (Unlocks shadow registers)
+    HAL_RTC_GetDate(&hrtc, &gDate, RTC_FORMAT_BIN);
+
+    // 3. Format as YYMMDD
+    sprintf(buffer, "%02d%02d%02d",
             gDate.Year, gDate.Month, gDate.Date);
+}
+
+void update_system_time(int y, int m, int d, int hh, int mm, int ss) {
+    RTC_TimeTypeDef sTime = {0};
+    RTC_DateTypeDef sDate = {0};
+
+    // 1. Configure Time
+    sTime.Hours = (uint8_t)hh;
+    sTime.Minutes = (uint8_t)mm;
+    sTime.Seconds = (uint8_t)ss;
+    sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+    sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+    HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+
+    // 2. Configure Date
+    sDate.Year = (uint8_t)(y - 2000); // 2026 -> 26
+    sDate.Month = (uint8_t)m;
+    sDate.Date = (uint8_t)d;
+    sDate.WeekDay = RTC_WEEKDAY_SATURDAY; // You can calculate this, but HAL requires a value
+    HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
 }
 /* USER CODE END 4 */
 

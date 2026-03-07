@@ -126,21 +126,6 @@ typedef struct
 EventGroupHandle_t pin_handle;
 
 /** Flag to indicate if the button state has changed */
-extern uint8_t button_changed;
-
-/** Response with OK content */
-static const char response_ok_html[] =
-{
-  "HTTP/1.1 200 OK\r\n"
-  "Server: U5\r\n"
-  "Access-Control-Allow-Origin: * \r\n"
-  "Cache-Control: no-cache\r\n"
-  "Keep-Alive: timeout=2, max=2\r\n"
-  "Connection: close\r\n"
-  "Content-Type: text/html; charset=utf-8\r\n"
-  "Content-Length: 2\r\n\r\n"
-  "OK"
-};
 
 char example_log_response[] =
 {
@@ -686,6 +671,49 @@ static void http_process_response(int32_t client, char *recv_buffer)
     } else {
       strcpy(full_response,
              "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n");
+    }
+    response_data = full_response;
+  }
+
+
+  if (response == GET_TIME) {
+    RTC_DateTypeDef date;
+    RTC_TimeTypeDef time;
+    get_rtc_typedef(&date, &time);
+
+    snprintf(response_body, sizeof(response_body), "20%02d-%02d-%02d %02d:%02d:%02d", date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds);
+    build_http_200_response(full_response, sizeof(full_response), response_body);
+    response_data = full_response;
+  }
+
+  if (response == SET_TIME) {
+    char *body = strstr(recv_buffer, "\r\n\r\n");
+
+    if (body != NULL) {
+      body += 4; // Jump past the \r\n\r\n
+
+      int y, m, d, hh, mm, ss;
+      // Parse: "TIME | 2026-03-07 18:30:00"
+      int items =
+          sscanf(body, "TIME | %d-%d-%d %d:%d:%d", &y, &m, &d, &hh, &mm, &ss);
+
+      if (items == 6) {
+        // Don't accept silly times
+        if (y >= 2000 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+          update_system_time(y, m, d, hh, mm, ss);
+          build_http_200_response(full_response, sizeof(full_response),"Time updated successfully");
+        } else {
+          build_http_error_response(full_response, sizeof(full_response), 400,
+                                    "Error: Invalid date/time values");
+        }
+      } else {
+        build_http_error_response(
+            full_response, sizeof(full_response), 400,
+            "Error: Use format 'TIME | YYYY-MM-DD HH:MM:SS'");
+      }
+    } else {
+      build_http_error_response(full_response, sizeof(full_response), 400,
+                                "Error: No body found");
     }
     response_data = full_response;
   }

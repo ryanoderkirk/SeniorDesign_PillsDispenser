@@ -255,7 +255,6 @@ void main_app(void)
     LogInfo("Soft-AP started\n");
   }
 
-  osDelay(100);
   http_server_socket(NULL);
 
   LogInfo("##### Quitting the application\n");
