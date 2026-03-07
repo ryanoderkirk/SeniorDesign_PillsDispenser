@@ -38,7 +38,7 @@ https://wiki.st.com/stm32mcu/wiki/Connectivity:Wi-Fi_ST67W6X_HTTP_Server_Applica
 #include "event_groups.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "filesystem.h"
 /* USER CODE END Includes */
 
 /* Global variables ----------------------------------------------------------*/
@@ -53,6 +53,14 @@ https://wiki.st.com/stm32mcu/wiki/Connectivity:Wi-Fi_ST67W6X_HTTP_Server_Applica
 typedef enum
 {
   INDEX_HTML,
+  GET_LOG,
+  SET_LOG,
+  GET_CONFIG,
+  SET_CONFIG,
+  GET_TIME,
+  SET_TIME,
+  GET_DATE,
+  SET_DATE,
   ERROR_404_HTML,
   UNKNOWN_RESPONSE
 } HttpServer_response_e;
@@ -327,7 +335,21 @@ _err:
 }
 
 /* USER CODE BEGIN FD */
+void build_http_200_response(char *output_buffer, size_t max_len, const char *body) {
+    // 1. Calculate length of the body
+    int body_len = strlen(body);
 
+    // 2. Construct the response: Status Line + Headers + Blank Line + Body
+    // \r\n is the standard line ending for HTTP
+    snprintf(output_buffer, max_len,
+             "HTTP/1.1 200 OK\r\n"
+             "Content-Type: text/plain\r\n"
+             "Content-Length: %d\r\n"
+             "Connection: close\r\n"
+             "\r\n" // The "Magic" blank line that separates headers from body
+             "%s", 
+             body_len, body);
+}
 /* USER CODE END FD */
 
 /* Private Functions Definition ----------------------------------------------*/
@@ -470,11 +492,75 @@ static void http_process_response(int32_t client, char *recv_buffer)
 
   /* USER CODE BEGIN http_process_response_2 */
 
+  static char response_body[256];
+  static char full_response[256];
   /* USER CODE END http_process_response_2 */
 
   if (response == UNKNOWN_RESPONSE) /* Request not recognized, return 404 error */
   {
     response_data = (char *)response_error_404_html;
+  }
+
+
+  if (response == GET_LOG) /* Request not recognized, return 404 error */
+  {
+    LogEntry_t log;
+    if (readLog(&log) != 0) {
+      response_data = (char *)response_error_404_html;
+    }
+    else {
+      snprintf(response_body, sizeof(response_body),
+                       "LOG EVENT: 20%02d-%02d-%02d %02d:%02d:%02d | Type: %d | Data: %d,%d",
+                       log.year, log.month, log.day, log.hour, log.min, log.sec, 
+                       log.logType, log.one, log.two);
+      build_http_200_response(full_response, sizeof(full_response), response_body);
+      response_data = full_response;
+    }
+  }
+
+  if (response == SET_LOG) {
+    LogEntry_t new_log = {0};
+    int items_parsed;
+
+    char *body = strstr(recv_buffer, "\r\n\r\n");
+
+    if (body != NULL) {
+      body += 4; // JUMP PAST THE NEWLINES
+
+      int y, m, d, hh, mm, ss, type, d1, d2;
+
+      // Match the format string EXACTLY to your GET_LOG format
+      items_parsed = sscanf(
+          body, "LOG EVENT: 20%d-%d-%d %d:%d:%d | Type: %d | Data: %d,%d", &y,
+          &m, &d, &hh, &mm, &ss, &type, &d1, &d2);
+
+      if (items_parsed == 9) {
+        new_log.year = (uint8_t)y;
+        new_log.month = (uint8_t)m;
+        new_log.day = (uint8_t)d;
+        new_log.hour = (uint8_t)hh;
+        new_log.min = (uint8_t)mm;
+        new_log.sec = (uint8_t)ss;
+        new_log.logType = (LogType_t)type;
+        new_log.one = (uint8_t)d1;
+        new_log.two = (uint8_t)d2;
+
+        if (writeLog(&new_log) == 0) {
+          strcpy(full_response, "HTTP/1.1 200 OK\r\nContent-Length: "
+                                "0\r\nConnection: close\r\n\r\n");
+        } else {
+          strcpy(full_response, "HTTP/1.1 500 Internal Server "
+                                "Error\r\nContent-Length: 0\r\n\r\n");
+        }
+      } else {
+        strcpy(full_response,
+               "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n");
+      }
+    } else {
+      strcpy(full_response,
+             "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n");
+    }
+    response_data = full_response;
   }
 
   /* Send the response */
