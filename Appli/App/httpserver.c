@@ -350,6 +350,39 @@ void build_http_200_response(char *output_buffer, size_t max_len, const char *bo
              "%s", 
              body_len, body);
 }
+
+/**
+ * @brief Constructs a standard HTTP error response
+ * @param output_buffer: Where to store the full string
+ * @param max_len: Size of the output buffer
+ * @param status_code: HTTP code (400, 404, 500, etc.)
+ * @param error_msg: The custom message body
+ */
+void build_http_error_response(char *output_buffer, size_t max_len, int status_code, const char *error_msg) {
+    const char *status_text;
+
+    // 1. Map codes to standard HTTP status strings
+    switch(status_code) {
+        case 400: status_text = "Bad Request"; break;
+        case 404: status_text = "Not Found"; break;
+        case 500: status_text = "Internal Server Error"; break;
+        default:  status_text = "Error"; break;
+    }
+
+    // 2. Body length for Content-Length header
+    int body_len = strlen(error_msg);
+
+    // 3. Format the full response
+    // Using \r\n is mandatory for HTTP compliance
+    snprintf(output_buffer, max_len,
+             "HTTP/1.1 %d %s\r\n"
+             "Content-Type: text/plain\r\n"
+             "Content-Length: %d\r\n"
+             "Connection: close\r\n"
+             "\r\n"
+             "%s",
+             status_code, status_text, body_len, error_msg);
+}
 /* USER CODE END FD */
 
 /* Private Functions Definition ----------------------------------------------*/
@@ -593,7 +626,8 @@ static void http_process_response(int32_t client, char *recv_buffer)
 
     if (channel > 0 && channel < 5) {
       if (readConfig(&config, channel) != 0) {
-        response_data = (char *)response_error_404_html;
+        build_http_error_response(full_response, sizeof(full_response), 404, "Config file has not been configured!");
+        response_data = full_response;
       }
       else {
         snprintf(response_body, sizeof(response_body),
@@ -605,7 +639,8 @@ static void http_process_response(int32_t client, char *recv_buffer)
       }
     }
     else {
-        response_data = (char *)response_error_404_html;
+        build_http_error_response(full_response, sizeof(full_response), 400, "Incorrect channel number!");
+        response_data = full_response;
     }
   }
 
