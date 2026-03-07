@@ -609,6 +609,52 @@ static void http_process_response(int32_t client, char *recv_buffer)
     }
   }
 
+  if (response == SET_CONFIG) {
+    Config_t new_config = {0};
+    int items_parsed;
+
+    char *body = strstr(recv_buffer, "\r\n\r\n");
+
+    if (body != NULL) {
+      body += 4; // JUMP PAST THE NEWLINES
+
+      int ch, count;
+      char name_tmp[64] = {0};
+
+      items_parsed =
+          sscanf(body, "CONFIG | Channel: %d | Count: %d | Pill: %63s", &ch,
+                 &count, name_tmp);
+
+      if (items_parsed == 3) {
+        new_config.channel = (uint8_t)ch;
+        new_config.pillCount = (uint8_t)count;
+
+        // 3. Copy string safely into the struct
+        strncpy((char *)new_config.pillName, name_tmp,
+                sizeof(new_config.pillName) - 1);
+        new_config.pillName[sizeof(new_config.pillName) - 1] =
+            '\0'; // Force null terminator
+
+        // 4. Write to LittleFS
+        if (writeConfig(&new_config) == 0) {
+          strcpy(full_response, "HTTP/1.1 200 OK\r\nContent-Length: "
+                                "0\r\nConnection: close\r\n\r\n");
+        } else {
+          strcpy(full_response, "HTTP/1.1 500 Internal Server "
+                                "Error\r\nContent-Length: 0\r\n\r\n");
+        }
+
+      } else {
+        strcpy(full_response,
+               "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n");
+      }
+    } else {
+      strcpy(full_response,
+             "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n");
+    }
+    response_data = full_response;
+  }
+
   /* Send the response */
   if (1 == http_server_write(client, response_data, strlen(response_data)))
   {
