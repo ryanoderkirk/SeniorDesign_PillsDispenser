@@ -211,6 +211,7 @@ void main_app(void)
     goto _err;
   }
 
+  osDelay(100);
   /* Initialize the ST67W6X Wi-Fi module */
   ret = W6X_WiFi_Init();
   if (ret)
@@ -220,6 +221,7 @@ void main_app(void)
   }
   LogInfo("Wi-Fi init is done\n");
 
+  osDelay(100);
   /* Initialize the ST67W6X Network module */
   ret = W6X_Net_Init();
   if (ret)
@@ -229,6 +231,7 @@ void main_app(void)
   }
   LogInfo("Net init is done\n");
 
+  osDelay(100);
   /* USER CODE BEGIN main_app_3 */
 
   /* USER CODE END main_app_3 */
@@ -252,6 +255,7 @@ void main_app(void)
     LogInfo("Soft-AP started\n");
   }
 
+  osDelay(100);
   http_server_socket(NULL);
 
   LogInfo("##### Quitting the application\n");
