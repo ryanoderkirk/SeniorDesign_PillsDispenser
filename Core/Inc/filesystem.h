@@ -27,6 +27,12 @@ typedef struct __attribute__((packed)) {
     uint8_t six;
 } LogEntry_t;
 
+typedef struct __attribute__((packed)) {
+    uint8_t channel;
+    uint8_t pillCount;
+    uint8_t pillName[64];
+} Config_t;
+
 // Mount file system if already formatted
 // If not already formatted, format then mount
 int filesystemInit();
@@ -45,6 +51,10 @@ int writeLog(LogEntry_t* log);
 
 // Read the most recent log
 int readLog(LogEntry_t* log);
+
+int writeConfig(Config_t* config);
+
+int readConfig(Config_t* config, int channel);
 
 // Fill timestamp of the log
 int fillLogTimestamp(LogEntry_t* log);

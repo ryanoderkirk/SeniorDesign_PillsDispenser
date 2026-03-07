@@ -288,6 +288,18 @@ int filesystemInit() {
   if (!(result == LFS_ERR_EXIST || result == 0))
     return -1;
 
+  const char *log_files[] = {"/logs/one", "/logs/two", "/logs/three", "/logs/four"};
+  for (int i = 0; i < 4; i++) {
+    // LFS_O_CREAT | LFS_O_RDWR ensures file exists without wiping it if it does
+    result = lfs_file_open(&lfs, &file, log_files[i], LFS_O_CREAT | LFS_O_RDWR);
+    if (result < 0)
+      return -1;
+
+    result = lfs_file_close(&lfs, &file);
+    if (result < 0)
+      return -1;
+  }
+
   return 0;
 }
 
@@ -339,10 +351,6 @@ int initDailyLog() {
     return -1;
 
   result = lfs_file_close(&lfs, &file);
-  if (result != 0)
-    return -1;
-
-  result = lfs_dir_close(&lfs, &dir);
   if (result != 0)
     return -1;
 
@@ -453,6 +461,64 @@ int readLog(LogEntry_t *log) {
 
   result = lfs_file_close(&lfs, &file);
   if (result != 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+
+int writeConfig(Config_t* config) {
+
+    int result = 0;
+    const char *log_files[] = {"/logs/one", "/logs/two", "/logs/three", "/logs/four"};
+    if (config->channel > 4 || config->channel < 1) {
+        return -1;
+    }
+
+    result = lfs_file_open(&lfs, &file, log_files[config->channel - 1],
+                           LFS_O_CREAT | LFS_O_RDWR | LFS_O_TRUNC);
+    if (result != 0)
+      return -1;
+
+    result = lfs_file_write(&lfs, &file, config, sizeof(Config_t));
+    if (result != sizeof(Config_t)) {
+      lfs_file_close(&lfs, &file);
+      return -1;
+    }
+
+    result = lfs_file_close(&lfs, &file);
+    if (result != 0)
+      return -1;
+
+    return 0;
+}
+
+int readConfig(Config_t* config, int channel) {
+  int result = 0;
+  const char *log_files[] = {"/logs/one", "/logs/two", "/logs/three",
+                             "/logs/four"};
+  if (channel > 4 || channel < 1) {
+    return -1;
+  }
+
+  result = lfs_file_open(&lfs, &file, log_files[channel - 1], LFS_O_RDONLY);
+  if (result != 0)
+    // file not yet created
+    return -1;
+
+  lfs_soff_t size = lfs_file_size(&lfs, &file);
+  if (size < (lfs_soff_t)sizeof(Config_t)) {
+    lfs_file_close(&lfs, &file);
+    // File too small/empty
+    return -2;
+  }
+
+  result = lfs_file_read(&lfs, &file, config, sizeof(Config_t));
+
+  int close_res = lfs_file_close(&lfs, &file);
+
+  if (result != sizeof(Config_t) || close_res < 0) {
     return -1;
   }
 
