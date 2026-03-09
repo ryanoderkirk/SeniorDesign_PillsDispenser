@@ -570,7 +570,7 @@ void get_rtc_YYMMDD(char *buffer) {
 
     // 3. Format as YYMMDD
     sprintf(buffer, "%02d%02d%02d",
-            gTime.Hours, gTime.Minutes, gTime.Seconds);
+            gDate.Year , gDate.Month, gDate.Date);
 }
 
 
@@ -586,7 +586,7 @@ void get_rtc_HHMMSS(char *buffer) {
 
     // 3. Format as YYMMDD
     sprintf(buffer, "%02d%02d%02d",
-            gDate.Year, gDate.Month, gDate.Date);
+            gTime.Hours, gTime.Minutes, gTime.Seconds);
 }
 
 void update_system_time(int y, int m, int d, int hh, int mm, int ss) {

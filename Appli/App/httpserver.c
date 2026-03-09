@@ -563,12 +563,18 @@ static void http_process_response(int32_t client, char *recv_buffer)
         new_log.one = (uint8_t)d1;
         new_log.two = (uint8_t)d2;
 
-        if (writeLog(&new_log) == 0) {
+        int result = writeLog(&new_log);
+        if (result == 0) {
           strcpy(full_response, "HTTP/1.1 200 OK\r\nContent-Length: "
                                 "0\r\nConnection: close\r\n\r\n");
-        } else {
-          strcpy(full_response, "HTTP/1.1 500 Internal Server "
-                                "Error\r\nContent-Length: 0\r\n\r\n");
+        } 
+        else if (result == -1) {
+          build_http_error_response(full_response, sizeof(full_response), 404, "No log has been written today");
+          response_data = full_response;
+        }
+        else {
+          build_http_error_response(full_response, sizeof(full_response), 404, "File write error");
+          response_data = full_response;
         }
       } else {
         strcpy(full_response,
@@ -611,7 +617,7 @@ static void http_process_response(int32_t client, char *recv_buffer)
 
     if (channel > 0 && channel < 5) {
       if (readConfig(&config, channel) != 0) {
-        build_http_error_response(full_response, sizeof(full_response), 404, "Config file has not been configured!");
+        build_http_error_response(full_response, sizeof(full_response), 404, "config file has not been configured!");
         response_data = full_response;
       }
       else {

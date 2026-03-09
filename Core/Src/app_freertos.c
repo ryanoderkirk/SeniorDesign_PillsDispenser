@@ -114,6 +114,7 @@ void StartDefaultTask(void *argument)
     if (initDailyLog() != 0) {
       LogError("Could not write log file\n");
     }
+    deleteAllLogs();
     listLogFiles();
   /* Infinite loop */
   for(;;)
