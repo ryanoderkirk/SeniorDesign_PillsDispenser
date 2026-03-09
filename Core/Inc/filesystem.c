@@ -285,19 +285,26 @@ int filesystemInit() {
   if (!(result == LFS_ERR_EXIST || result == 0))
     return -1;
 
-  const char *log_files[] = {"/logs/one", "/logs/two", "/logs/three", "/logs/four"};
+  const char *conf_files[] = {"/config/one", "/config/two", "/config/three",
+                              "/config/four"};
   for (int i = 0; i < 4; i++) {
     // LFS_O_CREAT | LFS_O_RDWR ensures file exists without wiping it if it does
-    result = lfs_file_open(&lfs, &file, log_files[i], LFS_O_CREAT | LFS_O_RDWR);
+    result = lfs_file_open(&lfs, &file, conf_files[i], LFS_O_CREAT | LFS_O_RDWR);
     if (result < 0)
       return -1;
 
-    result = lfs_file_close(&lfs, &file);
-    if (result < 0)
+    const char *dose_file = "/config/doses";
+    result = lfs_file_open(&lfs, &file, dose_file, LFS_O_CREAT | LFS_O_RDWR);
+    if (result < 0) {
       return -1;
-  }
+    }
 
-  return 0;
+      result = lfs_file_close(&lfs, &file);
+      if (result < 0)
+        return -1;
+    }
+
+    return 0;
 }
 
 int filetest() {
