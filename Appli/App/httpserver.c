@@ -524,7 +524,8 @@ static void http_process_response(int32_t client, char *recv_buffer)
   {
     LogEntry_t log;
     if (readLog(&log) != 0) {
-      response_data = (char *)response_error_404_html;
+      build_http_error_response(full_response, sizeof(full_response), 404, "Log read failed");
+      response_data = full_response;
     }
     else {
       snprintf(response_body, sizeof(response_body),
@@ -547,7 +548,6 @@ static void http_process_response(int32_t client, char *recv_buffer)
 
       int y, m, d, hh, mm, ss, type, d1, d2;
 
-      // Match the format string EXACTLY to your GET_LOG format
       items_parsed = sscanf(
           body, "LOG EVENT: 20%d-%d-%d %d:%d:%d | Type: %d | Data: %d,%d", &y,
           &m, &d, &hh, &mm, &ss, &type, &d1, &d2);

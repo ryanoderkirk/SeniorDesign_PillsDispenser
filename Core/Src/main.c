@@ -222,9 +222,9 @@ static void MX_GPDMA1_Init(void)
   __HAL_RCC_GPDMA1_CLK_ENABLE();
 
   /* GPDMA1 interrupt Init */
-    HAL_NVIC_SetPriority(GPDMA1_Channel0_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(GPDMA1_Channel0_IRQn, 7, 0);
     HAL_NVIC_EnableIRQ(GPDMA1_Channel0_IRQn);
-    HAL_NVIC_SetPriority(GPDMA1_Channel1_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(GPDMA1_Channel1_IRQn, 7, 0);
     HAL_NVIC_EnableIRQ(GPDMA1_Channel1_IRQn);
 
   /* USER CODE BEGIN GPDMA1_Init 1 */
@@ -355,7 +355,7 @@ static void MX_SPI4_Init(void)
   hspi4.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi4.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi4.Init.NSS = SPI_NSS_SOFT;
-  hspi4.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
+  hspi4.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
   hspi4.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi4.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi4.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -443,6 +443,7 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
@@ -458,6 +459,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(CHIP_EN_GPIO_Port, CHIP_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(CHIP_EN3_GPIO_Port, CHIP_EN3_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : SPI_CS_Pin */
@@ -466,12 +470,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(SPI_CS_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : SPI_RDY3_Pin */
-  GPIO_InitStruct.Pin = SPI_RDY3_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(SPI_RDY3_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : CHIP_EN2_Pin BOOT_Pin */
   GPIO_InitStruct.Pin = CHIP_EN2_Pin|BOOT_Pin;
@@ -484,8 +482,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = CHIP_EN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(CHIP_EN_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : CHIP_EN3_Pin */
+  GPIO_InitStruct.Pin = CHIP_EN3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(CHIP_EN3_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : Flash_CS_Pin */
   GPIO_InitStruct.Pin = Flash_CS_Pin;
@@ -501,7 +506,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(SPI_RDY_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI7_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(EXTI7_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(EXTI7_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */

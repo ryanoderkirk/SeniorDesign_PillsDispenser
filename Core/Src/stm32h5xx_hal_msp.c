@@ -225,7 +225,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_5|GPIO_PIN_6;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
     GPIO_InitStruct.Alternate = GPIO_AF5_SPI4;
     HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
@@ -285,7 +285,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     }
 
     /* SPI4 interrupt Init */
-    HAL_NVIC_SetPriority(SPI4_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(SPI4_IRQn, 8, 0);
     HAL_NVIC_EnableIRQ(SPI4_IRQn);
     /* USER CODE BEGIN SPI4_MspInit 1 */
 

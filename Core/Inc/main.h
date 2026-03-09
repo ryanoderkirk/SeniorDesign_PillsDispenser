@@ -64,14 +64,14 @@ void update_system_time(int y, int m, int d, int hh, int mm, int ss);
 /* Private defines -----------------------------------------------------------*/
 #define SPI_CS_Pin GPIO_PIN_4
 #define SPI_CS_GPIO_Port GPIOE
-#define SPI_RDY3_Pin GPIO_PIN_13
-#define SPI_RDY3_GPIO_Port GPIOC
 #define CHIP_EN2_Pin GPIO_PIN_14
 #define CHIP_EN2_GPIO_Port GPIOC
 #define BOOT_Pin GPIO_PIN_15
 #define BOOT_GPIO_Port GPIOC
-#define CHIP_EN_Pin GPIO_PIN_0
-#define CHIP_EN_GPIO_Port GPIOB
+#define CHIP_EN_Pin GPIO_PIN_8
+#define CHIP_EN_GPIO_Port GPIOF
+#define CHIP_EN3_Pin GPIO_PIN_0
+#define CHIP_EN3_GPIO_Port GPIOB
 #define DEBUG_USART_TX_Pin GPIO_PIN_8
 #define DEBUG_USART_TX_GPIO_Port GPIOD
 #define DEBUG_USART_RX_Pin GPIO_PIN_9
