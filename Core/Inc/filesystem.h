@@ -33,6 +33,19 @@ typedef struct __attribute__((packed)) {
     uint8_t pillName[64];
 } Config_t;
 
+
+typedef struct __attribute__((packed)) {
+    uint8_t hour;
+    uint8_t min;
+    uint8_t sec;
+    uint8_t pillOne[64];
+    uint8_t pillOneCount;
+    uint8_t pillTwo[64];
+    uint8_t pillTwoCount;
+    uint8_t pillThree[64];
+    uint8_t pillThreeCount;
+} Dosage_t;
+
 // Mount file system if already formatted
 // If not already formatted, format then mount
 int filesystemInit();

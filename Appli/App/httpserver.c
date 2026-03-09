@@ -520,7 +520,7 @@ static void http_process_response(int32_t client, char *recv_buffer)
   }
 
 
-  if (response == GET_LOG) /* Request not recognized, return 404 error */
+  if (response == GET_LOG)
   {
     LogEntry_t log;
 

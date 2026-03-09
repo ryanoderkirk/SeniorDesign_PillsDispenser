@@ -89,7 +89,6 @@ static int flash_wait_busy(void) {
     return -1; // Timeout
 }
 
-
 // Read a region in a block. Negative error codes are propagated
 // to the user.
 int block_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, void *buffer, lfs_size_t size) {
@@ -107,21 +106,20 @@ int block_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, voi
 
         uint32_t addr = (block * c->block_size) + off;
 
-        // 2. STATIC arrays to prevent the FreeRTOS stack overflow trap
         // 260 bytes covers the 4-byte command + max 256-byte LittleFS read
         static uint8_t tx_buf[260];
         static uint8_t rx_buf[260];
 
-        // Wipe the transmit buffer so we don't accidentally send old garbage 
+        // Wipe transmit buffer to avoid sending old data
         memset(tx_buf, 0, sizeof(tx_buf));
 
-        // 3. Build the read command header
+        // Build the read command header
         tx_buf[0] = FLASH_CMD_PAGE_READ;
         tx_buf[1] = (addr >> 16) & 0xFF; // Address High Byte (MSB)
         tx_buf[2] = (addr >> 8)  & 0xFF; // Address Middle Byte
         tx_buf[3] = (addr)       & 0xFF; // Address Low Byte (LSB)
 
-        // 4. ONE SINGLE unbroken transmission to prevent the H5 clock glitch!
+        // Transmit message over SPI
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
         if (HAL_SPI_TransmitReceive(hspi, tx_buf, rx_buf, 4 + size, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
@@ -131,7 +129,7 @@ int block_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, voi
         }
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
 
-        // We skip the first 4 bytes of rx_buf because they are just dummy 
+        // Skip first 4 bytes (first 4 bytes was the address
         memcpy(buffer, &rx_buf[4], size);
 
         osMutexRelease(*flashMutex);
@@ -153,7 +151,7 @@ int block_program(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, 
     osMutexId_t* flashMutex = getFlashMutex();
     if (osMutexAcquire(*flashMutex, 1000) == osOK) {
 
-        // Ensure no background operations are running
+        // Ensure no write in progress
         if (flash_wait_busy() != 0) {
             osMutexRelease(*flashMutex);
             return LFS_ERR_IO;
@@ -235,7 +233,6 @@ int block_erase(const struct lfs_config *c, lfs_block_t block) {
         tx_buf[2] = (addr >> 8)  & 0xFF; // Address Middle Byte
         tx_buf[3] = (addr)       & 0xFF; // Address Low Byte (LSB)
 
-        // Execute the erase command as a single Full-Duplex transaction
         HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_RESET);
         if (HAL_SPI_TransmitReceive(hspi, tx_buf, rx_buf, 4, 1000) != HAL_OK) {
             HAL_GPIO_WritePin(Flash_CS_GPIO_Port, Flash_CS_Pin, GPIO_PIN_SET);
