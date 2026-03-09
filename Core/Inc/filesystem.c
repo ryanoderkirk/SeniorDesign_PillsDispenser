@@ -37,6 +37,8 @@ static const struct lfs_config cfg = {
     .block_cycles = 500,
 };
 
+static const char doseFile[] = "/config/doses";
+
 // Send write enable command. Return 0 if flash chip is ready to be written to
 static int flash_write_enable(void) {
     SPI_HandleTypeDef *hspi = getFlashSPIHandle();
@@ -290,19 +292,20 @@ int filesystemInit() {
   for (int i = 0; i < 4; i++) {
     // LFS_O_CREAT | LFS_O_RDWR ensures file exists without wiping it if it does
     result = lfs_file_open(&lfs, &file, conf_files[i], LFS_O_CREAT | LFS_O_RDWR);
-    if (result < 0)
-      return -1;
-
-    const char *dose_file = "/config/doses";
-    result = lfs_file_open(&lfs, &file, dose_file, LFS_O_CREAT | LFS_O_RDWR);
     if (result < 0) {
       return -1;
     }
+  }
 
-      result = lfs_file_close(&lfs, &file);
-      if (result < 0)
-        return -1;
-    }
+  result = lfs_file_open(&lfs, &file, doseFile, LFS_O_CREAT | LFS_O_RDWR);
+  if (result < 0) {
+    return -1;
+  }
+
+    result = lfs_file_close(&lfs, &file);
+  if (result < 0) {
+      return -1;
+  }
 
     return 0;
 }
@@ -453,8 +456,10 @@ int readLog(LogEntry_t *log) {
   }
 
   result = lfs_file_seek(&lfs, &file, -sizeof(LogEntry_t), LFS_SEEK_END);
-  if (result < 0)
+  if (result < 0) {
+    lfs_file_close(&lfs, &file);
     return -1;
+  }
 
   result = lfs_file_read(&lfs, &file, log, sizeof(LogEntry_t));
   if (result != sizeof(LogEntry_t)) {
@@ -526,6 +531,102 @@ int readConfig(Config_t* config, int channel) {
   }
 
   return 0;
+}
+
+int writeDose(Dosage_t *config) {
+  int result = 0;
+
+  result = lfs_file_open(&lfs, &file, doseFile,
+                         LFS_O_CREAT | LFS_O_WRONLY | LFS_O_APPEND);
+  if (result != 0)
+    return -1;
+
+  lfs_soff_t size = lfs_file_size(&lfs, &file);
+  if (size >= 5 * sizeof(Dosage_t)) {
+    lfs_file_close(&lfs, &file);
+    // File already has max amount of doses!
+    return -2;
+  }
+
+  result = lfs_file_write(&lfs, &file, config, sizeof(Dosage_t));
+  if (result != sizeof(Dosage_t)) {
+    lfs_file_close(&lfs, &file);
+    return -1;
+  }
+
+  result = lfs_file_close(&lfs, &file);
+  if (result != 0)
+    return -1;
+
+  return 0;
+}
+
+int readDoses(Dosage_t *doses, uint32_t numberLogs) {
+
+  // System only supports 5 dosage times
+  if (numberLogs > 5 || numberLogs < 1) {
+    return -3;
+  }
+  int result = 0;
+
+  result = lfs_file_open(&lfs, &file, doseFile , LFS_O_RDONLY);
+  if (result != 0)
+    // file not yet created
+    return -1;
+
+  lfs_soff_t size = lfs_file_size(&lfs, &file);
+  if (size < (lfs_soff_t) (numberLogs * sizeof(Dosage_t))) {
+    lfs_file_close(&lfs, &file);
+    // File too small/empty
+    return -2;
+  }
+
+  result = lfs_file_seek(&lfs, &file, -sizeof(Dosage_t) * numberLogs,
+                         LFS_SEEK_END);
+  if (result < 0) {
+    lfs_file_close(&lfs, &file);
+    return -1;
+  }
+
+  result = lfs_file_read(&lfs, &file, doses, numberLogs * sizeof(Dosage_t));
+  if (result != numberLogs * sizeof(Dosage_t)) {
+    lfs_file_close(&lfs, &file);
+    return -1;
+  }
+
+  result = lfs_file_close(&lfs, &file);
+  if (result != 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+
+int clearDoses() {
+    int result = lfs_remove(&lfs, doseFile);
+
+    // If the file is already gone (not found), return success
+    if (result == LFS_ERR_NOENT) {
+        return 0;
+    }
+
+    // If result is negative (other than NOT_FOUND), it's a real filesystem error
+    if (result < 0) {
+        return -1; 
+    }
+
+    return 0;
+}
+
+int countDoses() {
+    int result = lfs_file_open(&lfs, &file, doseFile, LFS_O_RDONLY);
+    if (result < 0) return 0; // If file doesn't exist, count is 0
+
+    lfs_soff_t size = lfs_file_size(&lfs, &file);
+    lfs_file_close(&lfs, &file);
+
+    return (int)(size / sizeof(Dosage_t));
 }
 
 int fillLogTimestamp(LogEntry_t *log) {

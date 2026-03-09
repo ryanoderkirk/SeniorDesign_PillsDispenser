@@ -69,9 +69,13 @@ int writeConfig(Config_t* config);
 
 int readConfig(Config_t* config, int channel);
 
-int writeDoses(Dosage_t* config);
+int writeDose(Dosage_t* config);
 
-int readDoses(Dosage_t* config);
+int readDoses(Dosage_t *doses, uint32_t numberLogs);
+
+int clearDoses();
+
+int countDoses();
 
 // Fill timestamp of the log
 int fillLogTimestamp(LogEntry_t* log);
