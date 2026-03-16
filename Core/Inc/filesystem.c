@@ -295,6 +295,10 @@ int filesystemInit() {
     if (result < 0) {
       return -1;
     }
+    result = lfs_file_close(&lfs, &file);
+    if (result < 0) {
+        return -1;
+    }
   }
 
   result = lfs_file_open(&lfs, &file, doseFile, LFS_O_CREAT | LFS_O_RDWR);
@@ -302,7 +306,7 @@ int filesystemInit() {
     return -1;
   }
 
-    result = lfs_file_close(&lfs, &file);
+  result = lfs_file_close(&lfs, &file);
   if (result < 0) {
       return -1;
   }
@@ -372,6 +376,8 @@ int listLogFiles() {
 
   if (result != 0)
     return -1;
+
+  LogInfo("Log files...\n\n");
 
   while (lfs_dir_read(&lfs, &dir, &info) > 0) {
 	  if (info.name[0] == '.') {

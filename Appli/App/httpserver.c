@@ -679,8 +679,7 @@ static void http_process_response(int32_t client, char *recv_buffer)
 
         // 4. Write to LittleFS
         if (writeConfig(&new_config) == 0) {
-          strcpy(full_response, "HTTP/1.1 200 OK\r\nContent-Length: "
-                                "0\r\nConnection: close\r\n\r\n");
+          build_http_200_response(full_response, sizeof(full_response),"Config update succesfully");
         } else {
           strcpy(full_response, "HTTP/1.1 500 Internal Server "
                                 "Error\r\nContent-Length: 0\r\n\r\n");

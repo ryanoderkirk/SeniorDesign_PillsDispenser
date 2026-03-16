@@ -108,6 +108,7 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN defaultTask */
     LogEntry_t log;
     fillLogTimestamp(&log);
+
     if (filesystemInit() != 0) {
       LogError("Filesystem init failed\n");
     }
@@ -115,11 +116,11 @@ void StartDefaultTask(void *argument)
       LogError("Could not write log file\n");
     }
     deleteAllLogs();
-    listLogFiles();
   /* Infinite loop */
   for(;;)
   {
 
+    listLogFiles();
 
     osDelay(10000);
   }
