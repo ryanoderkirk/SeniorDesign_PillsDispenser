@@ -39,6 +39,7 @@ https://wiki.st.com/stm32mcu/wiki/Connectivity:Wi-Fi_ST67W6X_HTTP_Server_Applica
 
 /* USER CODE BEGIN Includes */
 #include "filesystem.h"
+#include "jsmn.h"
 /* USER CODE END Includes */
 
 /* Global variables ----------------------------------------------------------*/
@@ -59,8 +60,8 @@ typedef enum
   SET_CONFIG,
   GET_TIME,
   SET_TIME,
-  GET_DATE,
-  SET_DATE,
+  GET_DOSES,
+  SET_DOSES,
   ERROR_404_HTML,
   UNKNOWN_RESPONSE
 } HttpServer_response_e;
@@ -152,8 +153,8 @@ HttpServer_response_t http_server_responses[] =
   {SET_CONFIG,      "PUT /config",                                     example_put_response},
   {GET_TIME,        "GET /time",                                     example_log_response},
   {SET_TIME,        "PUT /time",                                     example_put_response},
-  {GET_DATE,        "GET /date",                                     example_log_response},
-  {SET_DATE,        "PUT /date",                                     example_put_response},
+  {GET_DOSES,        "GET /dose",                                     example_log_response},
+  {SET_DOSES,        "PUT /dose",                                     example_put_response},
 };
 
 /* USER CODE BEGIN PV */
@@ -320,6 +321,91 @@ _err:
 }
 
 /* USER CODE BEGIN FD */
+
+static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
+    if (tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
+        strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
+        return 0;
+    }
+    return -1;
+}
+
+static void copy_pill_name(uint8_t *dest, const char *json, jsmntok_t *tok) {
+    int len = tok->end - tok->start;
+    if (len > 63) len = 63;
+    memcpy(dest, json + tok->start, len);
+    dest[len] = '\0';
+}
+
+/**
+ * @brief Parses a JSON string into an array of Dosage_t structs.
+ * @param json The raw JSON string.
+ * @param doses Pointer to the destination array.
+ * @param size The maximum number of elements the doses array can hold.
+ * @return The number of dosages successfully parsed, or -1 on error.
+ */
+int parseDoseJSON(const char *json, Dosage_t *doses, int size) {
+    jsmn_parser p;
+    jsmntok_t t[256]; // Sufficient for ~10 dosages with all fields
+    jsmn_init(&p);
+
+    int r = jsmn_parse(&p, json, strlen(json), t, sizeof(t) / sizeof(t[0]));
+    if (r < 0 || t[0].type != JSMN_ARRAY) return -1;
+
+    // Determine how many items we can actually process
+    int json_array_size = t[0].size;
+    int count_to_parse = (json_array_size < size) ? json_array_size : size;
+
+    int token_idx = 1; // Start after the array token
+    for (int d = 0; d < count_to_parse; d++) {
+        if (t[token_idx].type != JSMN_OBJECT) return d; // Stop if not an object
+
+        int obj_fields = t[token_idx].size;
+        token_idx++; // Move to first key
+
+        for (int k = 0; k < obj_fields; k++) {
+            // Mapping Logic
+            if (jsoneq(json, &t[token_idx], "hour") == 0) {
+                doses[d].hour = (uint8_t)strtol(json + t[token_idx+1].start, NULL, 10);
+            } else if (jsoneq(json, &t[token_idx], "min") == 0) {
+                doses[d].min = (uint8_t)strtol(json + t[token_idx+1].start, NULL, 10);
+            } else if (jsoneq(json, &t[token_idx], "sec") == 0) {
+                doses[d].sec = (uint8_t)strtol(json + t[token_idx+1].start, NULL, 10);
+            } else if (jsoneq(json, &t[token_idx], "day") == 0) {
+                doses[d].day = (uint8_t)strtol(json + t[token_idx+1].start, NULL, 10);
+            }
+            // Pill 1
+            else if (jsoneq(json, &t[token_idx], "pillOne") == 0) {
+                copy_pill_name(doses[d].pillOne, json, &t[token_idx+1]);
+            } else if (jsoneq(json, &t[token_idx], "pillOneCount") == 0) {
+                doses[d].pillOneCount = (uint8_t)strtol(json + t[token_idx+1].start, NULL, 10);
+            }
+            // Pill 2
+            else if (jsoneq(json, &t[token_idx], "pillTwo") == 0) {
+                copy_pill_name(doses[d].pillTwo, json, &t[token_idx+1]);
+            } else if (jsoneq(json, &t[token_idx], "pillTwoCount") == 0) {
+                doses[d].pillTwoCount = (uint8_t)strtol(json + t[token_idx+1].start, NULL, 10);
+            }
+            // Pill 3
+            else if (jsoneq(json, &t[token_idx], "pillThree") == 0) {
+                copy_pill_name(doses[d].pillThree, json, &t[token_idx+1]);
+            } else if (jsoneq(json, &t[token_idx], "pillThreeCount") == 0) {
+                doses[d].pillThreeCount = (uint8_t)strtol(json + t[token_idx+1].start, NULL, 10);
+            }
+            // Pill 4
+            else if (jsoneq(json, &t[token_idx], "pillFour") == 0) {
+                copy_pill_name(doses[d].pillFour, json, &t[token_idx+1]);
+            } else if (jsoneq(json, &t[token_idx], "pillFourCount") == 0) {
+                doses[d].pillFourCount = (uint8_t)strtol(json + t[token_idx+1].start, NULL, 10);
+            }
+
+            token_idx += 2; // Next key/value pair
+        }
+    }
+
+    return count_to_parse;
+}
+
 void build_http_200_response(char *output_buffer, size_t max_len, const char *body) {
     // 1. Calculate length of the body
     int body_len = strlen(body);
@@ -368,6 +454,7 @@ void build_http_error_response(char *output_buffer, size_t max_len, int status_c
              "%s",
              status_code, status_text, body_len, error_msg);
 }
+
 /* USER CODE END FD */
 
 /* Private Functions Definition ----------------------------------------------*/
@@ -510,8 +597,8 @@ static void http_process_response(int32_t client, char *recv_buffer)
 
   /* USER CODE BEGIN http_process_response_2 */
 
-  static char response_body[256];
-  static char full_response[256];
+  static char response_body[512];
+  static char full_response[512];
   /* USER CODE END http_process_response_2 */
 
   if (response == UNKNOWN_RESPONSE) /* Request not recognized, return 404 error */
@@ -739,6 +826,74 @@ static void http_process_response(int32_t client, char *recv_buffer)
     response_data = full_response;
   }
 
+  if (response == GET_DOSES) {
+
+    int result = 0;
+    Dosage_t dose;
+    result = readDoses(&dose, 1);
+    if (result != 0) {
+        build_http_error_response(
+            full_response, sizeof(full_response), 400,
+            "Error: Failed to read doses");
+    }
+    else {
+
+      snprintf(response_body, sizeof(response_body),
+               "Time: %02d:%02d:%02d | "
+               "Pill 1: %.64s (Qty: %d) | "
+               "Pill 2: %.64s (Qty: %d) | "
+               "Pill 3: %.64s (Qty: %d) | "
+               "Pill 4: %.64s (Qty: %d)",
+               dose.hour, dose.min, dose.sec, (char *)dose.pillOne,
+               dose.pillOneCount, (char *)dose.pillTwo, dose.pillTwoCount,
+               (char *)dose.pillThree, dose.pillThreeCount,
+               (char *)dose.pillFour, dose.pillFourCount);
+      build_http_200_response(full_response, sizeof(full_response),
+                              response_body);
+    }
+    response_data = full_response;
+  }
+
+  if (response == SET_DOSES) {
+    Dosage_t doses[5];
+    char *body = strstr(recv_buffer, "\r\n\r\n");
+    if (body) {
+      // start after /r/n/r/n
+      body += 4;
+      int num_found = parseDoseJSON(body, doses, 5);
+      if (num_found < 1) {
+        build_http_error_response(full_response, sizeof(full_response), 400,
+                                  "Error: Failed to parse dose JSON");
+      } else {
+        int result = 0;
+        for (int i = 0; i < num_found; i++) {
+          result = writeDose(&doses[i]);
+          if (result == -2) {
+            build_http_error_response(full_response, sizeof(full_response), 400,
+                                      "Error: Cannot exceed 5 doses");
+            break;
+          } else if (result < 0) {
+            build_http_error_response(full_response, sizeof(full_response), 400,
+                                      "Error: Memory Write fail");
+            break;
+          }
+        }
+
+        if (result == 0) {
+          build_http_200_response(full_response, sizeof(full_response),
+                                  "Dosage written successfully");
+        }
+      }
+    }
+    else {
+      build_http_error_response(full_response, sizeof(full_response), 400,
+                                "Error: Invalid http format");
+    }
+  }
+
+    response_data = full_response;
+
+
   /* Send the response */
   if (1 == http_server_write(client, response_data, strlen(response_data)))
   {
@@ -749,6 +904,7 @@ static void http_process_response(int32_t client, char *recv_buffer)
 
   /* USER CODE END http_process_response_last */
 }
+
 
 /* USER CODE BEGIN PFD */
 

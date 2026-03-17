@@ -38,12 +38,15 @@ typedef struct __attribute__((packed)) {
     uint8_t hour;
     uint8_t min;
     uint8_t sec;
+    uint8_t day; // Reserved for future day functionality. Could represent frequency of dispense, or each bit represents a day, etc.
     uint8_t pillOne[64];
     uint8_t pillOneCount;
     uint8_t pillTwo[64];
     uint8_t pillTwoCount;
     uint8_t pillThree[64];
     uint8_t pillThreeCount;
+    uint8_t pillFour[64];
+    uint8_t pillFourCount;
 } Dosage_t;
 
 // Mount file system if already formatted
