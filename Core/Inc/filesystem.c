@@ -567,10 +567,10 @@ int writeDose(Dosage_t *config) {
   return 0;
 }
 
-int readDoses(Dosage_t *doses, uint32_t numberLogs) {
+int readDoses(Dosage_t *doses, uint32_t bufferSize) {
 
   // System only supports 5 dosage times
-  if (numberLogs > 5 || numberLogs < 1) {
+  if (bufferSize > 5 || bufferSize < 1) {
     return -3;
   }
   int result = 0;
@@ -581,21 +581,34 @@ int readDoses(Dosage_t *doses, uint32_t numberLogs) {
     return -1;
 
   lfs_soff_t size = lfs_file_size(&lfs, &file);
-  if (size < (lfs_soff_t) (numberLogs * sizeof(Dosage_t))) {
+  if (size < (lfs_soff_t) sizeof(Dosage_t)) {
     lfs_file_close(&lfs, &file);
     // File too small/empty
     return -2;
   }
 
-  result = lfs_file_seek(&lfs, &file, -sizeof(Dosage_t) * numberLogs,
+    // return max amount of data possible: if buffer size if bigger that number doses, return number doses. If numberDoses is bigger, return bufferSize
+  int numberDoses = size / sizeof(Dosage_t);
+  int dosesRead = -1;
+
+  // read buffersize amount of doses
+  if (numberDoses > bufferSize) {
+    dosesRead = bufferSize;
+  }
+  // read numberDoses amount of doses
+  else {
+    dosesRead = numberDoses;
+  }
+
+  result = lfs_file_seek(&lfs, &file, -sizeof(Dosage_t) * dosesRead,
                          LFS_SEEK_END);
   if (result < 0) {
     lfs_file_close(&lfs, &file);
     return -1;
   }
 
-  result = lfs_file_read(&lfs, &file, doses, numberLogs * sizeof(Dosage_t));
-  if (result != numberLogs * sizeof(Dosage_t)) {
+  result = lfs_file_read(&lfs, &file, doses, dosesRead * sizeof(Dosage_t));
+  if (result != dosesRead * sizeof(Dosage_t)) {
     lfs_file_close(&lfs, &file);
     return -1;
   }
@@ -605,7 +618,7 @@ int readDoses(Dosage_t *doses, uint32_t numberLogs) {
     return -1;
   }
 
-  return 0;
+  return dosesRead;
 }
 
 

@@ -91,7 +91,7 @@ typedef struct
 #define WEBSERVER_CHILD_THREAD_PRIO    29
 
 /** Stack size of the web server child task */
-#define HTTP_CHILD_TASK_STACK_SIZE     2048
+#define HTTP_CHILD_TASK_STACK_SIZE     4096 * 2
 
 /** HTTP server port */
 #define HTTP_PORT                      80
@@ -829,25 +829,56 @@ static void http_process_response(int32_t client, char *recv_buffer)
   if (response == GET_DOSES) {
 
     int result = 0;
-    Dosage_t dose;
-    result = readDoses(&dose, 1);
-    if (result != 0) {
+    Dosage_t doses[5];
+    int dosesRead = readDoses(&doses, 5);
+    if (result < 0) {
         build_http_error_response(
             full_response, sizeof(full_response), 400,
             "Error: Failed to read doses");
-    }
-    else {
+    } else {
+      size_t offset = 0; // Keeps track of where we are in the buffer
+      size_t max_len = sizeof(response_body);
 
-      snprintf(response_body, sizeof(response_body),
-               "Time: %02d:%02d:%02d | "
-               "Pill 1: %.64s (Qty: %d) | "
-               "Pill 2: %.64s (Qty: %d) | "
-               "Pill 3: %.64s (Qty: %d) | "
-               "Pill 4: %.64s (Qty: %d)",
-               dose.hour, dose.min, dose.sec, (char *)dose.pillOne,
-               dose.pillOneCount, (char *)dose.pillTwo, dose.pillTwoCount,
-               (char *)dose.pillThree, dose.pillThreeCount,
-               (char *)dose.pillFour, dose.pillFourCount);
+      for (int i = 0; i < dosesRead; i++) {
+        // 1. Calculate how much space is left in the buffer
+        size_t remaining_space = max_len - offset;
+
+        // 2. Stop if we are out of room (leave 1 byte for the null terminator)
+        if (remaining_space <= 1) {
+          break;
+        }
+
+        // 3. Write starting at the current offset
+        // Notice 'response_body + offset' - this advances the pointer
+        int written = snprintf(
+            response_body + offset, remaining_space,
+            "[Dose %d] Time: %02d:%02d:%02d | "
+            "Pill 1: %.64s (Qty: %d) | "
+            "Pill 2: %.64s (Qty: %d) | "
+            "Pill 3: %.64s (Qty: %d) | "
+            "Pill 4: %.64s (Qty: %d)\r\n", // Added \r\n for clean formatting
+            i + 1, doses[i].hour, doses[i].min, doses[i].sec,
+            (char *)doses[i].pillOne, doses[i].pillOneCount,
+            (char *)doses[i].pillTwo, doses[i].pillTwoCount,
+            (char *)doses[i].pillThree, doses[i].pillThreeCount,
+            (char *)doses[i].pillFour, doses[i].pillFourCount);
+
+        // 4. Safely update the offset for the next loop iteration
+        if (written > 0) {
+          // snprintf returns the number of chars it *wanted* to write.
+          // If 'written' is >= 'remaining_space', it means the string was
+          // truncated.
+          if ((size_t)written >= remaining_space) {
+            offset += (remaining_space - 1); // Move to the very end
+            break; // Stop looping, buffer is completely full
+          } else {
+            offset += written; // Advance pointer by the exact amount written
+          }
+        } else {
+          // snprintf encountered an encoding error
+          break;
+        }
+      }
       build_http_200_response(full_response, sizeof(full_response),
                               response_body);
     }
@@ -866,16 +897,23 @@ static void http_process_response(int32_t client, char *recv_buffer)
                                   "Error: Failed to parse dose JSON");
       } else {
         int result = 0;
-        for (int i = 0; i < num_found; i++) {
-          result = writeDose(&doses[i]);
-          if (result == -2) {
-            build_http_error_response(full_response, sizeof(full_response), 400,
-                                      "Error: Cannot exceed 5 doses");
-            break;
-          } else if (result < 0) {
-            build_http_error_response(full_response, sizeof(full_response), 400,
-                                      "Error: Memory Write fail");
-            break;
+        result = clearDoses();
+        if (result < 0) {
+          build_http_error_response(full_response, sizeof(full_response), 400,
+                                    "Error: could not clear current doses");
+        } else {
+
+          for (int i = 0; i < num_found; i++) {
+            result = writeDose(&doses[i]);
+            if (result == -2) {
+              build_http_error_response(full_response, sizeof(full_response),
+                                        400, "Error: Cannot exceed 5 doses");
+              break;
+            } else if (result < 0) {
+              build_http_error_response(full_response, sizeof(full_response),
+                                        400, "Error: Memory Write fail");
+              break;
+            }
           }
         }
 
@@ -889,6 +927,12 @@ static void http_process_response(int32_t client, char *recv_buffer)
       build_http_error_response(full_response, sizeof(full_response), 400,
                                 "Error: Invalid http format");
     }
+  }
+
+  if (response == UNKNOWN_RESPONSE) {
+
+    build_http_error_response(full_response, sizeof(full_response), 400,
+                              "Error: unknown request");
   }
 
     response_data = full_response;
