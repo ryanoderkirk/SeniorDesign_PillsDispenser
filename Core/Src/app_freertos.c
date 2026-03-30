@@ -25,6 +25,7 @@
 
 #include "logging.h"
 #include "filesystem.h"
+#include "dispenseControl.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
