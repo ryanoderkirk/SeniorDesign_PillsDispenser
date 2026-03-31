@@ -53,6 +53,7 @@ DMA_HandleTypeDef handle_GPDMA1_Channel0;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart3;
 
@@ -80,6 +81,7 @@ static void MX_SPI1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 
 int initFlashMutex(void);
@@ -87,7 +89,7 @@ int initFlashMutex(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+static uint32_t pillDetected = 0;
 /* USER CODE END 0 */
 
 /**
@@ -126,6 +128,7 @@ int main(void)
   MX_ADC2_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_TIM4_Init();
   MX_ST67W6X_Init();
   /* USER CODE BEGIN 2 */
   initFlashMutex();
@@ -544,6 +547,59 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 0;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 65535;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+  HAL_TIM_MspPostInit(&htim4);
+
+}
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -771,6 +827,21 @@ void update_system_time(int y, int m, int d, int hh, int mm, int ss) {
     sDate.WeekDay = RTC_WEEKDAY_SATURDAY; // You can calculate this, but HAL requires a value
     HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
 }
+
+
+ADC_HandleTypeDef *Get_ADC_Handle(void) { return &hadc2; }
+
+TIM_HandleTypeDef *Get_PWM_Dispense_Handle(void) { return &htim2; }
+
+TIM_HandleTypeDef *Get_PWM_Gate_Handle(void) { return &htim4; }
+
+TIM_HandleTypeDef *Get_ADC_TIM_Handle(void) { return &htim3; }
+
+UART_HandleTypeDef *Get_DEBUG_Handle(void) { return &huart3; }
+
+uint32_t isPillDetected() { return pillDetected; }
+
+uint32_t resetPillFlag() { pillDetected = 0; }
 /* USER CODE END 4 */
 
 /**

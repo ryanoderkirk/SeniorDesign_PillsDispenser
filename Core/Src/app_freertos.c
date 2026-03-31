@@ -107,6 +107,7 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN defaultTask */
+  /*
     LogEntry_t log;
     fillLogTimestamp(&log);
 
@@ -117,7 +118,10 @@ void StartDefaultTask(void *argument)
       LogError("Could not write log file\n");
     }
     deleteAllLogs();
+    */
   /* Infinite loop */
+
+  run270Servo(Get_PWM_Dispense_Handle(), TIM_CHANNEL_3, 90);
   for(;;)
   {
 
