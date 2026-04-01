@@ -121,11 +121,11 @@ void StartDefaultTask(void *argument)
     */
   /* Infinite loop */
 
-  run270Servo(Get_PWM_Dispense_Handle(), TIM_CHANNEL_3, 90);
+  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_2, 90);
   for(;;)
   {
 
-    listLogFiles();
+    //listLogFiles();
 
     osDelay(10000);
   }
