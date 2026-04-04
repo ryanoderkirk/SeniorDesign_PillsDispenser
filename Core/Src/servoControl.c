@@ -51,8 +51,7 @@ int run180Servo(TIM_HandleTypeDef timer, uint32_t tim_channel,
   return -1;
 }
 
-int run270Servo(TIM_HandleTypeDef timer, uint32_t tim_channel,
-                uint32_t degree) {
+int run270Servo(TIM_HandleTypeDef timer, uint32_t tim_channel, uint32_t degree) {
   // degree to appropriate pwm
   // 180 degree servo: .5ms pulse (0 degrees) -> 2.5ms pulse (180 degrees)
   // 640000 clock ticks per second -> 32000 ticks per 1ms

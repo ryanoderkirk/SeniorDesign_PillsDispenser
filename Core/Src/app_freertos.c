@@ -129,21 +129,21 @@ void StartDefaultTask(void *argument)
 
     // listLogFiles();
     
-    run270Servo(Get_PWM_Dispense_Handle, TIM_CHANNEL_1, 90);
-    run270Servo(Get_PWM_Dispense_Handle, TIM_CHANNEL_2, 90);
-    run270Servo(Get_PWM_Dispense_Handle, TIM_CHANNEL_3, 90);
-    run270Servo(Get_PWM_Dispense_Handle, TIM_CHANNEL_4, 90);
-    run270Servo(Get_PWM_Gate_Handle, TIM_CHANNEL_1, 90);
-    run270Servo(Get_PWM_Gate_Handle, TIM_CHANNEL_2, 90);
+    run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_1, 90);
+    run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_2, 90);
+    run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_3, 90);
+    run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_4, 90);
+    run270Servo(*Get_PWM_Gate_Handle(), TIM_CHANNEL_1, 90);
+    run270Servo(*Get_PWM_Gate_Handle(), TIM_CHANNEL_2, 90);
 
     osDelay(2000);
 
-    run270Servo(Get_PWM_Dispense_Handle, TIM_CHANNEL_1, 0);
-    run270Servo(Get_PWM_Dispense_Handle, TIM_CHANNEL_2, 0);
-    run270Servo(Get_PWM_Dispense_Handle, TIM_CHANNEL_3, 0);
-    run270Servo(Get_PWM_Dispense_Handle, TIM_CHANNEL_4, 0);
-    run270Servo(Get_PWM_Gate_Handle, TIM_CHANNEL_1, 0);
-    run270Servo(Get_PWM_Gate_Handle, TIM_CHANNEL_2, 0);
+    run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_1, 0);
+    run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_2, 0);
+    run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_3, 0);
+    run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_4, 0);
+    run270Servo(*Get_PWM_Gate_Handle(), TIM_CHANNEL_1, 0);
+    run270Servo(*Get_PWM_Gate_Handle(), TIM_CHANNEL_2, 0);
 
     osDelay(2000);
   }
