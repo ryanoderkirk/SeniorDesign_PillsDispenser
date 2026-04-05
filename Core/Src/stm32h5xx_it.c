@@ -57,6 +57,7 @@
 /* External variables --------------------------------------------------------*/
 extern DMA_HandleTypeDef handle_GPDMA1_Channel1;
 extern DMA_HandleTypeDef handle_GPDMA1_Channel0;
+extern SPI_HandleTypeDef hspi3;
 extern SPI_HandleTypeDef hspi4;
 extern UART_HandleTypeDef huart3;
 extern TIM_HandleTypeDef htim1;
@@ -164,17 +165,17 @@ void DebugMon_Handler(void)
 /******************************************************************************/
 
 /**
-  * @brief This function handles EXTI Line7 interrupt.
+  * @brief This function handles EXTI Line12 interrupt.
   */
-void EXTI7_IRQHandler(void)
+void EXTI12_IRQHandler(void)
 {
-  /* USER CODE BEGIN EXTI7_IRQn 0 */
+  /* USER CODE BEGIN EXTI12_IRQn 0 */
 
-  /* USER CODE END EXTI7_IRQn 0 */
+  /* USER CODE END EXTI12_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(SPI_RDY_Pin);
-  /* USER CODE BEGIN EXTI7_IRQn 1 */
+  /* USER CODE BEGIN EXTI12_IRQn 1 */
 
-  /* USER CODE END EXTI7_IRQn 1 */
+  /* USER CODE END EXTI12_IRQn 1 */
 }
 
 /**
@@ -217,6 +218,20 @@ void TIM1_UP_IRQHandler(void)
   /* USER CODE BEGIN TIM1_UP_IRQn 1 */
 
   /* USER CODE END TIM1_UP_IRQn 1 */
+}
+
+/**
+  * @brief This function handles SPI3 global interrupt.
+  */
+void SPI3_IRQHandler(void)
+{
+  /* USER CODE BEGIN SPI3_IRQn 0 */
+
+  /* USER CODE END SPI3_IRQn 0 */
+  HAL_SPI_IRQHandler(&hspi3);
+  /* USER CODE BEGIN SPI3_IRQn 1 */
+
+  /* USER CODE END SPI3_IRQn 1 */
 }
 
 /**

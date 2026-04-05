@@ -62,25 +62,21 @@ void update_system_time(int y, int m, int d, int hh, int mm, int ss);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define SPI_CS_Pin GPIO_PIN_4
-#define SPI_CS_GPIO_Port GPIOE
-#define CHIP_EN2_Pin GPIO_PIN_14
-#define CHIP_EN2_GPIO_Port GPIOC
-#define BOOT_Pin GPIO_PIN_15
-#define BOOT_GPIO_Port GPIOC
-#define CHIP_EN_Pin GPIO_PIN_8
-#define CHIP_EN_GPIO_Port GPIOF
-#define CHIP_EN3_Pin GPIO_PIN_0
-#define CHIP_EN3_GPIO_Port GPIOB
 #define DEBUG_USART_TX_Pin GPIO_PIN_8
 #define DEBUG_USART_TX_GPIO_Port GPIOD
 #define DEBUG_USART_RX_Pin GPIO_PIN_9
 #define DEBUG_USART_RX_GPIO_Port GPIOD
+#define SPI_CS_Pin GPIO_PIN_9
+#define SPI_CS_GPIO_Port GPIOA
+#define BOOT_Pin GPIO_PIN_10
+#define BOOT_GPIO_Port GPIOA
+#define CHIP_EN_Pin GPIO_PIN_11
+#define CHIP_EN_GPIO_Port GPIOA
+#define SPI_RDY_Pin GPIO_PIN_12
+#define SPI_RDY_GPIO_Port GPIOA
+#define SPI_RDY_EXTI_IRQn EXTI12_IRQn
 #define Flash_CS_Pin GPIO_PIN_12
 #define Flash_CS_GPIO_Port GPIOG
-#define SPI_RDY_Pin GPIO_PIN_7
-#define SPI_RDY_GPIO_Port GPIOB
-#define SPI_RDY_EXTI_IRQn EXTI7_IRQn
 
 /* USER CODE BEGIN Private defines */
 
