@@ -107,9 +107,12 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN defaultTask */
   /* Infinite loop */
+  if (filesystemInit() != 0) {
+     LogError("Filesystem init failed\n");
+  }
   for(;;)
   {
-
+	listLogFiles();
     osDelay(10000);
   }
   /* USER CODE END defaultTask */
