@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * File Name          : app_freertos.c
-  * Description        : FreeRTOS applicative file
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2026 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * File Name          : app_freertos.c
+ * Description        : FreeRTOS applicative file
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2026 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
@@ -23,8 +23,10 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
-#include "logging.h"
+#include "dispenseControl.h"
 #include "filesystem.h"
+#include "logging.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -98,19 +100,75 @@ void MX_FREERTOS_Init(void) {
 }
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
-* @brief Function implementing the defaultTask thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the defaultTask thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN defaultTask */
   /* Infinite loop */
-  for(;;)
-  {
+  if (filesystemInit() != 0) {
+     LogError("Filesystem init failed\n");
+  }
+  /*
+      if (filesystemInit() != 0) {
+      LogError("Filesystem init failed\n");
+    }
+    if (initDailyLog() != 0) {
+      LogError("Could not write log file\n");
+    }
+    deleteAllLogs();
+    */
+  /* Infinite loop */
 
-    osDelay(10);
+  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_1, 90);
+  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_2, 90);
+  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_3, 90);
+  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_4, 90);
+  run270Servo(*Get_PWM_Gate_Handle(), TIM_CHANNEL_1, 90);
+  run270Servo(*Get_PWM_Gate_Handle(), TIM_CHANNEL_2, 90);
+  // Configure ADC to listen to channel specified
+  ADC_HandleTypeDef *hadc = Get_ADC_Handle();
+  ADC_AnalogWDGConfTypeDef AnalogWDGConfig = {0};
+  ADC_ChannelConfTypeDef sConfig = {0};
+  AnalogWDGConfig.WatchdogNumber = ADC_ANALOGWATCHDOG_1;
+  AnalogWDGConfig.WatchdogMode = ADC_ANALOGWATCHDOG_SINGLE_REG;
+  AnalogWDGConfig.Channel = ADC_CHANNEL_3;
+  AnalogWDGConfig.ITMode = ENABLE;
+  AnalogWDGConfig.HighThreshold = 4095;
+  AnalogWDGConfig.LowThreshold = 620;
+  AnalogWDGConfig.FilteringConfig = ADC_AWD_FILTERING_8SAMPLES;
+  if (HAL_ADC_AnalogWDGConfig(hadc, &AnalogWDGConfig) != HAL_OK) {
+    Error_Handler();
+  }
+  sConfig.Channel = ADC_CHANNEL_3;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+  if (HAL_ADC_ConfigChannel(hadc, &sConfig) != HAL_OK) {
+    Error_Handler();
+  }
+
+  // Timer 3 needs to be started to trigger ADC conversions
+  HAL_TIM_Base_Start(Get_ADC_TIM_Handle());
+  HAL_ADC_Start_IT(hadc);
+
+  for (;;) {
+
+    listLogFiles();
+
+    uint32_t adcValue = HAL_ADC_GetValue(hadc);
+    if (isPillDetected()) {
+      LogInfo("\ndetected! (ADC: %lu)\n", adcValue);
+      resetPillFlag();
+    } else {
+      LogInfo("\nnot detected! (ADC: %lu)\n", adcValue);
+    }
+    osDelay(2000);
   }
   /* USER CODE END defaultTask */
 }

@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file    stm32h5xx_it.c
-  * @brief   Interrupt Service Routines.
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2026 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file    stm32h5xx_it.c
+ * @brief   Interrupt Service Routines.
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2026 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
@@ -55,9 +55,11 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern ADC_HandleTypeDef hadc1;
+extern ADC_HandleTypeDef hadc2;
 extern DMA_HandleTypeDef handle_GPDMA1_Channel1;
 extern DMA_HandleTypeDef handle_GPDMA1_Channel0;
-extern SPI_HandleTypeDef hspi4;
+extern SPI_HandleTypeDef hspi3;
 extern UART_HandleTypeDef huart3;
 extern TIM_HandleTypeDef htim1;
 
@@ -77,8 +79,7 @@ void NMI_Handler(void)
 
   /* USER CODE END NonMaskableInt_IRQn 0 */
   /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
-   while (1)
-  {
+  while (1) {
   }
   /* USER CODE END NonMaskableInt_IRQn 1 */
 }
@@ -164,17 +165,17 @@ void DebugMon_Handler(void)
 /******************************************************************************/
 
 /**
-  * @brief This function handles EXTI Line7 interrupt.
+  * @brief This function handles EXTI Line12 interrupt.
   */
-void EXTI7_IRQHandler(void)
+void EXTI12_IRQHandler(void)
 {
-  /* USER CODE BEGIN EXTI7_IRQn 0 */
+  /* USER CODE BEGIN EXTI12_IRQn 0 */
 
-  /* USER CODE END EXTI7_IRQn 0 */
+  /* USER CODE END EXTI12_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(SPI_RDY_Pin);
-  /* USER CODE BEGIN EXTI7_IRQn 1 */
+  /* USER CODE BEGIN EXTI12_IRQn 1 */
 
-  /* USER CODE END EXTI7_IRQn 1 */
+  /* USER CODE END EXTI12_IRQn 1 */
 }
 
 /**
@@ -206,6 +207,20 @@ void GPDMA1_Channel1_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles ADC1 global interrupt.
+  */
+void ADC1_IRQHandler(void)
+{
+  /* USER CODE BEGIN ADC1_IRQn 0 */
+
+  /* USER CODE END ADC1_IRQn 0 */
+  HAL_ADC_IRQHandler(&hadc1);
+  /* USER CODE BEGIN ADC1_IRQn 1 */
+
+  /* USER CODE END ADC1_IRQn 1 */
+}
+
+/**
   * @brief This function handles TIM1 Update interrupt.
   */
 void TIM1_UP_IRQHandler(void)
@@ -217,6 +232,20 @@ void TIM1_UP_IRQHandler(void)
   /* USER CODE BEGIN TIM1_UP_IRQn 1 */
 
   /* USER CODE END TIM1_UP_IRQn 1 */
+}
+
+/**
+  * @brief This function handles SPI3 global interrupt.
+  */
+void SPI3_IRQHandler(void)
+{
+  /* USER CODE BEGIN SPI3_IRQn 0 */
+
+  /* USER CODE END SPI3_IRQn 0 */
+  HAL_SPI_IRQHandler(&hspi3);
+  /* USER CODE BEGIN SPI3_IRQn 1 */
+
+  /* USER CODE END SPI3_IRQn 1 */
 }
 
 /**
@@ -234,17 +263,17 @@ void USART3_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles SPI4 global interrupt.
+  * @brief This function handles ADC2 global interrupt.
   */
-void SPI4_IRQHandler(void)
+void ADC2_IRQHandler(void)
 {
-  /* USER CODE BEGIN SPI4_IRQn 0 */
+  /* USER CODE BEGIN ADC2_IRQn 0 */
 
-  /* USER CODE END SPI4_IRQn 0 */
-  HAL_SPI_IRQHandler(&hspi4);
-  /* USER CODE BEGIN SPI4_IRQn 1 */
+  /* USER CODE END ADC2_IRQn 0 */
+  HAL_ADC_IRQHandler(&hadc2);
+  /* USER CODE BEGIN ADC2_IRQn 1 */
 
-  /* USER CODE END SPI4_IRQn 1 */
+  /* USER CODE END ADC2_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
