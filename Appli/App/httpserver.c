@@ -719,6 +719,50 @@ static int get_config(Config_t* config, char* recv_buffer) {
   return 0;
 }
 
+static int set_config(char *recv_buffer) {
+
+  Config_t new_config = {0};
+  int items_parsed;
+
+  char *body = strstr(recv_buffer, "\r\n\r\n");
+  if (body == NULL) {
+    build_http_error_response(full_response, sizeof(full_response), 400,
+                              "Could not parse get string");
+    return -1;
+  }
+  body += 4; // JUMP PAST THE NEWLINES
+
+  int ch, count;
+  char name_tmp[64] = {0};
+
+  items_parsed = sscanf(body, "CONFIG | Channel: %d | Count: %d | Pill: %63s",
+                        &ch, &count, name_tmp);
+
+  if (items_parsed != 3) {
+    build_http_error_response(full_response, sizeof(full_response), 400,
+                              "Could not parse config message");
+    return -2;
+  }
+  new_config.pillCount = (uint8_t)count;
+
+  // 3. Copy string safely into the struct
+  strncpy((char *)new_config.pillName, name_tmp,
+          sizeof(new_config.pillName) - 1);
+  new_config.pillName[sizeof(new_config.pillName) - 1] =
+      '\0'; // Force null terminator
+
+  // 4. Write to LittleFS
+  int result = writeConfig(&new_config);
+
+  if (result != 0) {
+    build_http_error_response(full_response, sizeof(full_response), 400,
+                              "Failed to write config to flash");
+  }
+
+          build_http_200_response(full_response, sizeof(full_response),"Config update succesfully");
+  return 0;
+}
+
 static void http_process_response(int32_t client, char *recv_buffer)
 {
   HttpServer_response_e response = UNKNOWN_RESPONSE;
@@ -755,7 +799,6 @@ static void http_process_response(int32_t client, char *recv_buffer)
   }
 
   if (response == SET_LOG) {
-    LogEntry_t new_log = {0};
     int result = set_log(&log, recv_buffer);
     response_data = full_response;
   }
@@ -768,47 +811,7 @@ static void http_process_response(int32_t client, char *recv_buffer)
   }
 
   if (response == SET_CONFIG) {
-    Config_t new_config = {0};
-    int items_parsed;
-
-    char *body = strstr(recv_buffer, "\r\n\r\n");
-
-    if (body != NULL) {
-      body += 4; // JUMP PAST THE NEWLINES
-
-      int ch, count;
-      char name_tmp[64] = {0};
-
-      items_parsed =
-          sscanf(body, "CONFIG | Channel: %d | Count: %d | Pill: %63s", &ch,
-                 &count, name_tmp);
-
-      if (items_parsed == 3) {
-        new_config.channel = (uint8_t)ch;
-        new_config.pillCount = (uint8_t)count;
-
-        // 3. Copy string safely into the struct
-        strncpy((char *)new_config.pillName, name_tmp,
-                sizeof(new_config.pillName) - 1);
-        new_config.pillName[sizeof(new_config.pillName) - 1] =
-            '\0'; // Force null terminator
-
-        // 4. Write to LittleFS
-        if (writeConfig(&new_config) == 0) {
-          build_http_200_response(full_response, sizeof(full_response),"Config update succesfully");
-        } else {
-          strcpy(full_response, "HTTP/1.1 500 Internal Server "
-                                "Error\r\nContent-Length: 0\r\n\r\n");
-        }
-
-      } else {
-        strcpy(full_response,
-               "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n");
-      }
-    } else {
-      strcpy(full_response,
-             "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n");
-    }
+    int result = set_config(recv_buffer);
     response_data = full_response;
   }
 
