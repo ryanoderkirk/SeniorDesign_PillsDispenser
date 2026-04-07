@@ -44,7 +44,8 @@ https://wiki.st.com/stm32mcu/wiki/Connectivity:Wi-Fi_ST67W6X_HTTP_Server_Applica
 
 /* Global variables ----------------------------------------------------------*/
 /* USER CODE BEGIN GV */
-
+static char response_body[512];
+static char full_response[512];
 /* USER CODE END GV */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -575,6 +576,33 @@ int32_t close_client(int32_t client)
   return 0;
 }
 
+// call flash function to get most recent log. Add full response to full_response string
+static int get_log(LogEntry_t* log) {
+    int result = readLog(&log);
+
+    // no logs available today
+    if (result == -1) {
+      build_http_error_response(full_response, sizeof(full_response), 404, "No log has been written today");
+      return -1;
+    }
+
+    // other error occured
+    if (result != 0) {
+      build_http_error_response(full_response, sizeof(full_response), 404, "get log failed");
+      return -2;
+    }
+
+    // happy path, read succeeded
+    if (result == 0) {
+      snprintf(response_body, sizeof(response_body),
+                       "LOG EVENT: 20%02d-%02d-%02d %02d:%02d:%02d | Type: %d | Data: %d,%d,%d,%d",
+                       log->year, log->month, log->day, log->hour, log->min, log->sec, 
+                       log->logType, log->one, log->two, log->three, log->four);
+      build_http_200_response(full_response, sizeof(full_response), response_body);
+      return 0;
+    }
+}
+
 static void http_process_response(int32_t client, char *recv_buffer)
 {
   HttpServer_response_e response = UNKNOWN_RESPONSE;
@@ -597,8 +625,6 @@ static void http_process_response(int32_t client, char *recv_buffer)
 
   /* USER CODE BEGIN http_process_response_2 */
 
-  static char response_body[512];
-  static char full_response[512];
   /* USER CODE END http_process_response_2 */
 
   if (response == UNKNOWN_RESPONSE) /* Request not recognized, return 404 error */
