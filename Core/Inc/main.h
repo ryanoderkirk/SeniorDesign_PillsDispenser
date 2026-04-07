@@ -71,6 +71,17 @@ void update_system_time(int y, int m, int d, int hh, int mm, int ss);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define SELECT_Pin GPIO_PIN_0
+#define SELECT_GPIO_Port GPIOF
+#define SELECT_EXTI_IRQn EXTI0_IRQn
+#define BACK_Pin GPIO_PIN_1
+#define BACK_GPIO_Port GPIOF
+#define BACK_EXTI_IRQn EXTI1_IRQn
+#define ENCA_Pin GPIO_PIN_2
+#define ENCA_GPIO_Port GPIOF
+#define ENCA_EXTI_IRQn EXTI2_IRQn
+#define ENCB_Pin GPIO_PIN_3
+#define ENCB_GPIO_Port GPIOF
 #define DEBUG_USART_TX_Pin GPIO_PIN_8
 #define DEBUG_USART_TX_GPIO_Port GPIOD
 #define DEBUG_USART_RX_Pin GPIO_PIN_9
