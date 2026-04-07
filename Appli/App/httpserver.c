@@ -603,6 +603,72 @@ static int get_log(LogEntry_t* log) {
     }
 }
 
+static int set_log(LogEntry_t *log, char* recv_buffer) {
+  LogEntry_t new_log = {0};
+  int items_parsed;
+
+  char *body = strstr(recv_buffer, "\r\n\r\n");
+  if (body == NULL) {
+    build_http_error_response(full_response, sizeof(full_response), 404,
+                              "Body is NULL");
+    return -1;
+  }
+
+  body += 4; // JUMP PAST THE NEWLINES
+
+  int y, m, d, hh, mm, ss, type, d1, d2, d3, d4;
+
+  items_parsed = sscanf(
+      body, "LOG EVENT: 20%d-%d-%d %d:%d:%d | Type: %d | Data: %d,%d,%d,%d", &y,
+      &m, &d, &hh, &mm, &ss, &type, &d1, &d2, &d3, &d4);
+
+  if (items_parsed != 11) {
+    build_http_error_response(full_response, sizeof(full_response), 404,
+                              "Body is NULL");
+    return -2;
+  }
+
+  new_log.year = (uint8_t)y;
+  new_log.month = (uint8_t)m;
+  new_log.day = (uint8_t)d;
+  new_log.hour = (uint8_t)hh;
+  new_log.min = (uint8_t)mm;
+  new_log.sec = (uint8_t)ss;
+  new_log.logType = (LogType_t)type;
+  new_log.one = (uint8_t)d1;
+  new_log.two = (uint8_t)d2;
+  new_log.three = (uint8_t)d3;
+  new_log.four = (uint8_t)d4;
+
+  // temporarily rewrite log with system time instead of time supplied from log,
+  // for consistency
+  RTC_DateTypeDef date;
+  RTC_TimeTypeDef time;
+  int result = get_rtc_typedef(&date, &time);
+  if (result != 0) {
+    build_http_error_response(full_response, sizeof(full_response), 404,
+                              "Failed to get RTC time");
+    return -2;
+  }
+  new_log.year = date.Year;
+  new_log.month = date.Month;
+  new_log.day = date.Date;
+  new_log.hour = time.Hours;
+  new_log.min = time.Minutes;
+  new_log.sec = time.Seconds;
+
+  result = writeLog(&new_log);
+  if (result != 0) {
+    build_http_error_response(full_response, sizeof(full_response), 404,
+                              "File write error");
+    return -3;
+  }
+
+  strcpy(full_response, "HTTP/1.1 200 OK\r\nContent-Length: "
+                        "0\r\nConnection: close\r\n\r\n");
+  return 0;
+}
+
 static void http_process_response(int32_t client, char *recv_buffer)
 {
   HttpServer_response_e response = UNKNOWN_RESPONSE;
@@ -632,87 +698,15 @@ static void http_process_response(int32_t client, char *recv_buffer)
     response_data = (char *)response_error_404_html;
   }
 
-
-  if (response == GET_LOG)
-  {
+  if (response == GET_LOG) {
     LogEntry_t log;
-
-    int result = readLog(&log);
-    if (result == 0) {
-      snprintf(response_body, sizeof(response_body),
-                       "LOG EVENT: 20%02d-%02d-%02d %02d:%02d:%02d | Type: %d | Data: %d,%d,%d,%d",
-                       log.year, log.month, log.day, log.hour, log.min, log.sec, 
-                       log.logType, log.one, log.two, log.three, log.four);
-      build_http_200_response(full_response, sizeof(full_response), response_body);
-      response_data = full_response;
-    }
-    else if (result == -1) {
-      build_http_error_response(full_response, sizeof(full_response), 404, "No log has been written today");
-      response_data = full_response;
-    }
-    else {
-      build_http_error_response(full_response, sizeof(full_response), 404, "Log read failed");
-      response_data = full_response;
-    }
+    int result = get_log(&log);
+    response_data = full_response;
   }
 
   if (response == SET_LOG) {
     LogEntry_t new_log = {0};
-    int items_parsed;
-
-    char *body = strstr(recv_buffer, "\r\n\r\n");
-
-    if (body != NULL) {
-      body += 4; // JUMP PAST THE NEWLINES
-
-      int y, m, d, hh, mm, ss, type, d1, d2, d3, d4;
-
-      items_parsed = sscanf(
-          body, "LOG EVENT: 20%d-%d-%d %d:%d:%d | Type: %d | Data: %d,%d,%d,%d", &y,
-          &m, &d, &hh, &mm, &ss, &type, &d1, &d2, &d3, &d4);
-
-      if (items_parsed == 11) {
-        new_log.year = (uint8_t)y;
-        new_log.month = (uint8_t)m;
-        new_log.day = (uint8_t)d;
-        new_log.hour = (uint8_t)hh;
-        new_log.min = (uint8_t)mm;
-        new_log.sec = (uint8_t)ss;
-        new_log.logType = (LogType_t)type;
-        new_log.one = (uint8_t)d1;
-        new_log.two = (uint8_t)d2;
-        new_log.three = (uint8_t)d3;
-        new_log.four = (uint8_t)d4;
-
-        //temporarily rewrite log with system time instead of time supplied from log, for consistency
-        RTC_DateTypeDef date;
-        RTC_TimeTypeDef time;
-        get_rtc_typedef(&date, &time);
-        new_log.year = date.Year;
-        new_log.month = date.Month;
-        new_log.day = date.Date;
-        new_log.hour = time.Hours;
-        new_log.min = time.Minutes;
-        new_log.sec = time.Seconds;
-
-
-        int result = writeLog(&new_log);
-        if (result == 0) {
-          strcpy(full_response, "HTTP/1.1 200 OK\r\nContent-Length: "
-                                "0\r\nConnection: close\r\n\r\n");
-        } 
-        else {
-          build_http_error_response(full_response, sizeof(full_response), 404, "File write error");
-          response_data = full_response;
-        }
-      } else {
-        strcpy(full_response,
-               "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n");
-      }
-    } else {
-      strcpy(full_response,
-             "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n");
-    }
+    int result = set_log(&log, recv_buffer);
     response_data = full_response;
   }
 
