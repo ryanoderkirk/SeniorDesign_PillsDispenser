@@ -270,9 +270,9 @@ int32_t spi_port_set_cs(int32_t state)
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 {
   /* USER CODE BEGIN HAL_SPI_TxCpltCallback_1 */
-	  if(hspi == HSPI_INSTANCE)
+	  if(hspi->Instance == hspi2.Instance)
 	  {
-		  HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);
+		  //HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);
 	  }
   /* USER CODE END HAL_SPI_TxCpltCallback_1 */
   spi_port_transaction_complete_cb();

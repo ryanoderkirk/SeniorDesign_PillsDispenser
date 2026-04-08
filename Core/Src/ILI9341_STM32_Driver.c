@@ -15,18 +15,12 @@ volatile uint16_t LCD_WIDTH	 = ILI9341_SCREEN_WIDTH;
 // GPDMA1_Channel2
 static void ILI9341_SPI_Tx(uint8_t data)
 {
-	// Check GPDMA busy Flag
-	while(HAL_SPI_GetState(HSPI_INSTANCE) != HAL_SPI_STATE_READY)//(GPDMA1_Channel2->CSR & 0x100));//(!__HAL_SPI_GET_FLAG(HSPI_INSTANCE, SPI_FLAG_TXP)); // Edited From SPI_FLAG_TXE
-	HAL_SPI_Transmit_DMA(HSPI_INSTANCE, &data, 1);
-	//HAL_SPI_Transmit(HSPI_INSTANCE, &data, 1, 10);
+	HAL_SPI_Transmit(HSPI_INSTANCE, &data, 1, 10);
 }
 
 static void ILI9341_SPI_TxBuffer(uint8_t *buffer, uint16_t len)
 {
-	// Check GPDMA busy Flag
-	while(HAL_SPI_GetState(HSPI_INSTANCE) != HAL_SPI_STATE_READY)//((GPDMA1_Channel2->CSR & 0x100));//(!__HAL_SPI_GET_FLAG(HSPI_INSTANCE, SPI_FLAG_TXP)); // Edited From SPI_FLAG_TXE
-	HAL_SPI_Transmit_DMA(HSPI_INSTANCE, buffer, len);
-	//HAL_SPI_Transmit(HSPI_INSTANCE, buffer, len, 10);
+	HAL_SPI_Transmit(HSPI_INSTANCE, buffer, len, HAL_MAX_DELAY);
 }
 
 void ILI9341_WriteCommand(uint8_t cmd)
@@ -34,7 +28,7 @@ void ILI9341_WriteCommand(uint8_t cmd)
 	HAL_GPIO_WritePin(LCD_DC_PORT, LCD_DC_PIN, GPIO_PIN_RESET);	//command
 	HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_RESET);	//select
 	ILI9341_SPI_Tx(cmd);
-	//HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);	//deselect
+	HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);	//deselect
 }
 
 void ILI9341_WriteData(uint8_t data)
@@ -42,7 +36,7 @@ void ILI9341_WriteData(uint8_t data)
 	HAL_GPIO_WritePin(LCD_DC_PORT, LCD_DC_PIN, GPIO_PIN_SET);	//data
 	HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_RESET);	//select
 	ILI9341_SPI_Tx(data);
-	//HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);	//deselect
+	HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);	//deselect
 }
 
 void ILI9341_WriteBuffer(uint8_t *buffer, uint16_t len)
@@ -50,7 +44,7 @@ void ILI9341_WriteBuffer(uint8_t *buffer, uint16_t len)
 	HAL_GPIO_WritePin(LCD_DC_PORT, LCD_DC_PIN, GPIO_PIN_SET);	//data
 	HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_RESET);	//select
 	ILI9341_SPI_TxBuffer(buffer, len);
-	//HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);	//deselect
+	HAL_GPIO_WritePin(LCD_CS_PORT, LCD_CS_PIN, GPIO_PIN_SET);	//deselect
 }
 
 void ILI9341_SetAddress(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
