@@ -7,6 +7,7 @@
 #include "main.h"
 #include <stdint.h>
 #include <string.h>
+#include "cmsis_os2.h"
 
 #define FLASH_CMD_WREN 0x06 // Write Enable Instruction
 #define FLASH_CMD_READ_SR1 0x05
@@ -14,6 +15,16 @@
 #define FLASH_CMD_PAGE_PROGRAM 0x02
 #define FLASH_CMD_SECTOR_ERASE 0x20
 #define FLASH_CMD_DEVICE_ID 0x90A
+
+
+osMutexId_t filesystemMutex;
+
+const osMutexAttr_t filesystemMutex_attributes = {
+  "filesystemMutex",                     // Name for debugging
+  osMutexRecursive | osMutexPrioInherit, // Allow recursive calls and priority inheritance
+  NULL,                                  // Memory for control block
+  0U                                     // Size of control block
+};
 
 // variables used by the filesystem
 static lfs_t lfs;
@@ -269,6 +280,9 @@ int(block_sync)(const struct lfs_config *c) {
 // Mount file system if already formatted
 // If not already formatted, format then mount
 int filesystemInit() {
+  //create mutex for filesystem functions
+  filesystemMutex = osMutexNew(&filesystemMutex_attributes);
+
   // mount the filesystem
   int result = lfs_mount(&lfs, &cfg);
 
@@ -315,6 +329,8 @@ int filesystemInit() {
 }
 
 int filetest() {
+    // only for testing
+    return 0;
   for (int i = 0; i < 1000; i++) {
 
     // 1. Erase
@@ -347,6 +363,14 @@ int filetest() {
 }
 
 int initDailyLog() {
+  if (filesystemMutex == NULL) {
+    LogDebug("Filesystem mutex not created yet!");
+    return -1;
+  }
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
+  }
 
   int result = 0;
 
@@ -357,25 +381,41 @@ int initDailyLog() {
   snprintf(fullPath, sizeof(fullPath), "/logs/%s", logName);
 
   result = lfs_file_open(&lfs, &file, fullPath, LFS_O_CREAT | LFS_O_RDWR);
-  if (result != 0)
+  if (result != 0) {
+    osMutexRelease(filesystemMutex);
     return -1;
+  }
 
   result = lfs_file_close(&lfs, &file);
-  if (result != 0)
+  if (result != 0) {
+    osMutexRelease(filesystemMutex);
     return -1;
+  }
 
+  osMutexRelease(filesystemMutex);
   return 0;
 }
 
 int listLogFiles() {
+  if (filesystemMutex == NULL) {
+    LogDebug("Filesystem mutex not created yet!");
+    return -1;
+  }
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
+  }
+
 
   int result = 0;
   lfs_dir_t dir = {0};
   struct lfs_info info = {0};
   result = lfs_dir_open(&lfs, &dir, "/logs/");
 
-  if (result != 0)
+  if (result != 0) {
+    osMutexRelease(filesystemMutex);
     return -1;
+  }
 
   LogInfo("Log files...\n\n");
 
@@ -388,36 +428,38 @@ int listLogFiles() {
 
   lfs_dir_close(&lfs, &dir);
 
+  osMutexRelease(filesystemMutex);
   return 0;
 }
 
 int deleteAllLogs() {
-
-  int result = 0;
-  lfs_dir_t dir = {0};
-  struct lfs_info info = {0};
-  result = lfs_dir_open(&lfs, &dir, "/logs/");
-
-  if (result != 0)
+  if (filesystemMutex == NULL)
     return -1;
 
-  while (lfs_dir_read(&lfs, &dir, &info) > 0) {
-    if (info.name[0] == '.')
-      continue;
-    char fullPath[64];
-    snprintf(fullPath, sizeof(fullPath), "/logs/%s", info.name);
-    result = lfs_remove(&lfs, fullPath);
-    if (result != 0)
-      return -1;
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
   }
 
-  lfs_dir_close(&lfs, &dir);
+  int result = lfs_remove(&lfs, "/logs");
 
+  // Recreate the folder so initDailyLog() doesn't fail later
+  lfs_mkdir(&lfs, "/logs");
+
+  osMutexRelease(filesystemMutex);
   return 0;
 }
 
 // write a log to the current day's log file
 int writeLog(LogEntry_t *log) {
+  if (filesystemMutex == NULL)
+    return -1;
+
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
+  }
+
   int result = 0;
 
   char filePath[20] = "/logs/YYMMDD";
@@ -425,24 +467,37 @@ int writeLog(LogEntry_t *log) {
 
   result = lfs_file_open(&lfs, &file, filePath,
                          LFS_O_CREAT | LFS_O_RDWR | LFS_O_APPEND);
-  if (result != 0)
+  if (result != 0) {
+    osMutexRelease(filesystemMutex);
     return -1;
+  }
 
   result = lfs_file_write(&lfs, &file, log, sizeof(LogEntry_t));
   if (result != sizeof(LogEntry_t)) {
     lfs_file_close(&lfs, &file);
+    osMutexRelease(filesystemMutex);
     return -1;
   }
 
   result = lfs_file_close(&lfs, &file);
-  if (result != 0)
+  if (result != 0) {
+    osMutexRelease(filesystemMutex);
     return -1;
+  }
 
+  osMutexRelease(filesystemMutex);
   return 0;
 }
 
 // Read the most recent log
 int readLog(LogEntry_t *log) {
+  if (filesystemMutex == NULL)
+    return -1;
+
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
+  }
 
   int result = 0;
 
@@ -450,80 +505,112 @@ int readLog(LogEntry_t *log) {
   get_rtc_YYMMDD(filePath + 6);
 
   result = lfs_file_open(&lfs, &file, filePath, LFS_O_RDONLY);
-  if (result != 0)
-    // file not yet created
+  if (result != 0) {
+    LogDebug("file not yet created");
+    osMutexRelease(filesystemMutex);
     return -1;
+  }
 
   lfs_soff_t size = lfs_file_size(&lfs, &file);
   if (size < (lfs_soff_t)sizeof(LogEntry_t)) {
     lfs_file_close(&lfs, &file);
     // File too small/empty
+    osMutexRelease(filesystemMutex);
     return -2;
   }
 
   result = lfs_file_seek(&lfs, &file, -sizeof(LogEntry_t), LFS_SEEK_END);
   if (result < 0) {
     lfs_file_close(&lfs, &file);
+    osMutexRelease(filesystemMutex);
     return -1;
   }
 
   result = lfs_file_read(&lfs, &file, log, sizeof(LogEntry_t));
   if (result != sizeof(LogEntry_t)) {
     lfs_file_close(&lfs, &file);
+    osMutexRelease(filesystemMutex);
     return -1;
   }
 
   result = lfs_file_close(&lfs, &file);
   if (result != 0) {
+    osMutexRelease(filesystemMutex);
     return -1;
   }
 
+  osMutexRelease(filesystemMutex);
   return 0;
 }
 
 
 int writeConfig(Config_t* config) {
+  if (filesystemMutex == NULL)
+    return -1;
+
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
+  }
 
     int result = 0;
     const char *config_files[] = {"/config/one", "/config/two", "/config/three", "/config/four"};
     if (config->channel > 4 || config->channel < 1) {
+        osMutexRelease(filesystemMutex);
         return -1;
     }
 
     result = lfs_file_open(&lfs, &file, config_files[config->channel - 1],
                            LFS_O_CREAT | LFS_O_RDWR | LFS_O_TRUNC);
-    if (result != 0)
+    if (result != 0) {
+      osMutexRelease(filesystemMutex);
       return -1;
+    }
 
     result = lfs_file_write(&lfs, &file, config, sizeof(Config_t));
     if (result != sizeof(Config_t)) {
       lfs_file_close(&lfs, &file);
+      osMutexRelease(filesystemMutex);
       return -1;
     }
 
     result = lfs_file_close(&lfs, &file);
-    if (result != 0)
+    if (result != 0) {
+      osMutexRelease(filesystemMutex);
       return -1;
+    }
 
+    osMutexRelease(filesystemMutex);
     return 0;
 }
 
 int readConfig(Config_t* config, int channel) {
+  if (filesystemMutex == NULL)
+    return -1;
+
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
+  }
+
   int result = 0;
   const char *config_files[] = {"/config/one", "/config/two", "/config/three",
                              "/config/four"};
   if (channel > 4 || channel < 1) {
+    osMutexRelease(filesystemMutex);
     return -1;
   }
 
   result = lfs_file_open(&lfs, &file, config_files[channel - 1], LFS_O_RDONLY);
-  if (result != 0)
-    // file not yet created
+  if (result != 0) {
+    osMutexRelease(filesystemMutex);
     return -1;
+    }
 
   lfs_soff_t size = lfs_file_size(&lfs, &file);
   if (size < (lfs_soff_t)sizeof(Config_t)) {
     lfs_file_close(&lfs, &file);
+    osMutexRelease(filesystemMutex);
     // File too small/empty
     return -2;
   }
@@ -533,57 +620,86 @@ int readConfig(Config_t* config, int channel) {
   int close_res = lfs_file_close(&lfs, &file);
 
   if (result != sizeof(Config_t) || close_res < 0) {
+    osMutexRelease(filesystemMutex);
     return -1;
   }
 
+  osMutexRelease(filesystemMutex);
   return 0;
 }
 
 int writeDose(Dosage_t *config) {
+  if (filesystemMutex == NULL)
+    return -1;
+
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
+  }
+
   int result = 0;
 
   result = lfs_file_open(&lfs, &file, doseFile,
                          LFS_O_CREAT | LFS_O_WRONLY | LFS_O_APPEND);
-  if (result != 0)
+  if (result != 0) {
+    osMutexRelease(filesystemMutex);
     return -1;
+  }
 
   lfs_soff_t size = lfs_file_size(&lfs, &file);
   if (size >= 5 * sizeof(Dosage_t)) {
     lfs_file_close(&lfs, &file);
     // File already has max amount of doses!
+    osMutexRelease(filesystemMutex);
     return -2;
   }
 
   result = lfs_file_write(&lfs, &file, config, sizeof(Dosage_t));
   if (result != sizeof(Dosage_t)) {
     lfs_file_close(&lfs, &file);
+    osMutexRelease(filesystemMutex);
     return -1;
   }
 
   result = lfs_file_close(&lfs, &file);
-  if (result != 0)
+  if (result != 0) {
+    osMutexRelease(filesystemMutex);
     return -1;
+  }
 
+  osMutexRelease(filesystemMutex);
   return 0;
 }
 
 int readDoses(Dosage_t *doses, uint32_t bufferSize) {
 
+  if (filesystemMutex == NULL)
+    return -1;
+
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
+  }
+
   // System only supports 5 dosage times
   if (bufferSize > 5 || bufferSize < 1) {
+    osMutexRelease(filesystemMutex);
     return -3;
   }
   int result = 0;
 
   result = lfs_file_open(&lfs, &file, doseFile , LFS_O_RDONLY);
-  if (result != 0)
+  if (result != 0) {
     // file not yet created
+    osMutexRelease(filesystemMutex);
     return -1;
+  }
 
   lfs_soff_t size = lfs_file_size(&lfs, &file);
   if (size < (lfs_soff_t) sizeof(Dosage_t)) {
     lfs_file_close(&lfs, &file);
     // File too small/empty
+    osMutexRelease(filesystemMutex);
     return -2;
   }
 
@@ -604,47 +720,71 @@ int readDoses(Dosage_t *doses, uint32_t bufferSize) {
                          LFS_SEEK_END);
   if (result < 0) {
     lfs_file_close(&lfs, &file);
+    osMutexRelease(filesystemMutex);
     return -1;
   }
 
   result = lfs_file_read(&lfs, &file, doses, dosesRead * sizeof(Dosage_t));
   if (result != dosesRead * sizeof(Dosage_t)) {
     lfs_file_close(&lfs, &file);
+    osMutexRelease(filesystemMutex);
     return -1;
   }
 
   result = lfs_file_close(&lfs, &file);
   if (result != 0) {
+    osMutexRelease(filesystemMutex);
     return -1;
   }
 
+  osMutexRelease(filesystemMutex);
   return dosesRead;
 }
 
-
 int clearDoses() {
-    int result = lfs_remove(&lfs, doseFile);
+  if (filesystemMutex == NULL)
+    return -1;
 
-    // If the file is already gone (not found), return success
-    if (result == LFS_ERR_NOENT) {
-        return 0;
-    }
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
+  }
+  int result = lfs_remove(&lfs, doseFile);
 
-    // If result is negative (other than NOT_FOUND), it's a real filesystem error
-    if (result < 0) {
-        return -1; 
-    }
-
+  // If the file is already gone (not found), return success
+  if (result == LFS_ERR_NOENT) {
+    osMutexRelease(filesystemMutex);
     return 0;
+  }
+
+  // If result is negative (other than NOT_FOUND), it's a real filesystem error
+  if (result < 0) {
+    osMutexRelease(filesystemMutex);
+    return -1;
+  }
+
+  osMutexRelease(filesystemMutex);
+  return 0;
 }
 
 int countDoses() {
+  if (filesystemMutex == NULL)
+    return -1;
+
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
+  }
     int result = lfs_file_open(&lfs, &file, doseFile, LFS_O_RDONLY);
-    if (result < 0) return 0; // If file doesn't exist, count is 0
+    if (result < 0) {
+      osMutexRelease(filesystemMutex);
+      return 0; // If file doesn't exist, count is 0
+    }
 
     lfs_soff_t size = lfs_file_size(&lfs, &file);
     lfs_file_close(&lfs, &file);
 
+    osMutexRelease(filesystemMutex);
     return (int)(size / sizeof(Dosage_t));
 }
 
