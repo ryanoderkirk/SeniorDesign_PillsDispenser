@@ -194,11 +194,12 @@ void StartDefaultTask(void *argument)
 void UI_Task(void *argument)
 {
   /* USER CODE BEGIN UI_Task */
+	//UI_init();
   /* Infinite loop */
   for(;;)
   {
 	UI_handleInput();
-    osDelay(1);
+    osDelay(100);
   }
   /* USER CODE END UI_Task */
 }
