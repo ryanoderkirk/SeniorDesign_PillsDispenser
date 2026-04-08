@@ -593,14 +593,14 @@ static int get_log(LogEntry_t* log) {
     }
 
     // happy path, read succeeded
-    if (result == 0) {
-      snprintf(response_body, sizeof(response_body),
-                       "LOG EVENT: 20%02d-%02d-%02d %02d:%02d:%02d | Type: %d | Data: %d,%d,%d,%d",
-                       log->year, log->month, log->day, log->hour, log->min, log->sec, 
-                       log->logType, log->one, log->two, log->three, log->four);
-      build_http_200_response(full_response, sizeof(full_response), response_body);
-      return 0;
-    }
+    snprintf(response_body, sizeof(response_body),
+             "LOG EVENT: 20%02d-%02d-%02d %02d:%02d:%02d | Type: %d | Data: "
+             "%d,%d,%d,%d",
+             log->year, log->month, log->day, log->hour, log->min, log->sec,
+             log->logType, log->one, log->two, log->three, log->four);
+    build_http_200_response(full_response, sizeof(full_response),
+                            response_body);
+    return 0;
 }
 
 static int set_log(LogEntry_t *log, char* recv_buffer) {
@@ -759,8 +759,25 @@ static int set_config(char *recv_buffer) {
                               "Failed to write config to flash");
   }
 
-          build_http_200_response(full_response, sizeof(full_response),"Config update succesfully");
+  build_http_200_response(full_response, sizeof(full_response),
+                          "Config update succesfully");
   return 0;
+}
+
+static int get_time() {
+    RTC_DateTypeDef date;
+    RTC_TimeTypeDef time;
+    get_rtc_typedef(&date, &time);
+
+    snprintf(response_body, sizeof(response_body), "20%02d-%02d-%02d %02d:%02d:%02d", date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds);
+    build_http_200_response(full_response, sizeof(full_response), response_body);
+
+    return 0;
+}
+
+static int set_time(char* recv_buffer) {
+
+    return 0;
 }
 
 static void http_process_response(int32_t client, char *recv_buffer)
@@ -794,12 +811,12 @@ static void http_process_response(int32_t client, char *recv_buffer)
 
   if (response == GET_LOG) {
     LogEntry_t log;
-    int result = get_log(&log);
+    get_log(&log);
     response_data = full_response;
   }
 
   if (response == SET_LOG) {
-    int result = set_log(&log, recv_buffer);
+    set_log(&log, recv_buffer);
     response_data = full_response;
   }
 
@@ -811,18 +828,13 @@ static void http_process_response(int32_t client, char *recv_buffer)
   }
 
   if (response == SET_CONFIG) {
-    int result = set_config(recv_buffer);
+    set_config(recv_buffer);
     response_data = full_response;
   }
 
 
   if (response == GET_TIME) {
-    RTC_DateTypeDef date;
-    RTC_TimeTypeDef time;
-    get_rtc_typedef(&date, &time);
-
-    snprintf(response_body, sizeof(response_body), "20%02d-%02d-%02d %02d:%02d:%02d", date.Year, date.Month, date.Date, time.Hours, time.Minutes, time.Seconds);
-    build_http_200_response(full_response, sizeof(full_response), response_body);
+    get_time();
     response_data = full_response;
   }
 
