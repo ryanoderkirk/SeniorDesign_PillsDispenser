@@ -578,7 +578,7 @@ int32_t close_client(int32_t client)
 
 // call flash function to get most recent log. Add full response to full_response string
 static int get_log(LogEntry_t* log) {
-    int result = readLog(&log);
+    int result = readLog(log);
 
     // no logs available today
     if (result == -1) {
@@ -603,7 +603,7 @@ static int get_log(LogEntry_t* log) {
     return 0;
 }
 
-static int set_log(LogEntry_t *log, char* recv_buffer) {
+static int set_log(char* recv_buffer) {
   LogEntry_t new_log = {0};
   int items_parsed;
 
@@ -706,7 +706,7 @@ static int get_config(Config_t* config, char* recv_buffer) {
     return -4;
   }
 
-  int result = readConfig(&config, channel);
+  int result = readConfig(config, channel);
   if (result != 0) {
     build_http_error_response(full_response, sizeof(full_response), 404,
                               "config file has not been configured!");
@@ -816,7 +816,7 @@ static void http_process_response(int32_t client, char *recv_buffer)
   }
 
   if (response == SET_LOG) {
-    set_log(&log, recv_buffer);
+    set_log(recv_buffer);
     response_data = full_response;
   }
 
@@ -874,7 +874,7 @@ static void http_process_response(int32_t client, char *recv_buffer)
 
     int result = 0;
     Dosage_t doses[5];
-    int dosesRead = readDoses(&doses, 5);
+    int dosesRead = readDoses(doses, 5);
     if (result < 0) {
         build_http_error_response(
             full_response, sizeof(full_response), 400,
