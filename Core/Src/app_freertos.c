@@ -194,7 +194,9 @@ void StartDefaultTask(void *argument)
 void UI_Task(void *argument)
 {
   /* USER CODE BEGIN UI_Task */
-	//UI_init();
+	  ILI9341_Init();
+	  UI_init();
+
   /* Infinite loop */
   for(;;)
   {

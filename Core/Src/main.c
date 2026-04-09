@@ -139,11 +139,7 @@ int main(void)
   MX_SPI2_Init();
   MX_ST67W6X_Init();
   /* USER CODE BEGIN 2 */
-
-  ILI9341_Init();
-  ILI9341_FillScreen(BLACK);
   initFlashMutex();
-  UI_init();
 
 
   // filetest();

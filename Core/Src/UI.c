@@ -68,6 +68,7 @@ short pinIndex = 0;
 enum UISTATE pinNextState = NONE;
 enum UISTATE pinReturnState = NONE;
 
+char IP[16] = "000.000.000.000";
 /**
  * Handlers for default menu pages
  */
@@ -558,12 +559,10 @@ void drawPinCursor(){
 
 }
 
-char testip[] = "10.19.96.1";
-uint8_t IPTESTARRAY[] = {192,168,1,91};
+uint8_t IPTESTARRAY[] = {10,19,96,1};
 char* getIP(){
-	static char IP[16] = "000.000.000.000";
 	sprintf(IP,"%03d.%03d.%03d.%03d",IPTESTARRAY[0],IPTESTARRAY[1],IPTESTARRAY[2],IPTESTARRAY[3]);
-	return testip;
+	return IP;
 }
 
 char testTime[] = "10:37";
