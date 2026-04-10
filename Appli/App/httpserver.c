@@ -750,19 +750,20 @@ static int set_config(char *recv_buffer) {
     return -2;
   }
   new_config.pillCount = (uint8_t)count;
+  new_config.channel = (uint8_t)ch;
 
-  // 3. Copy string safely into the struct
+  // Copy string safely into the struct
   strncpy((char *)new_config.pillName, name_tmp,
           sizeof(new_config.pillName) - 1);
   new_config.pillName[sizeof(new_config.pillName) - 1] =
       '\0'; // Force null terminator
 
-  // 4. Write to LittleFS
   int result = writeConfig(&new_config);
 
   if (result != 0) {
     build_http_error_response(full_response, sizeof(full_response), 400,
                               "Failed to write config to flash");
+    return -3;
   }
 
   build_http_200_response(full_response, sizeof(full_response),
