@@ -889,23 +889,23 @@ void get_rtc_HHMMSS(char *buffer) {
 }
 
 void update_system_time(int y, int m, int d, int hh, int mm, int ss) {
-  RTC_TimeTypeDef sTime = {0};
-  RTC_DateTypeDef sDate = {0};
+    RTC_TimeTypeDef sTime = {0};
+    RTC_DateTypeDef sDate = {0};
 
-  // 1. Configure Time
-  sTime.Hours = (uint8_t)hh;
-  sTime.Minutes = (uint8_t)mm;
-  sTime.Seconds = (uint8_t)ss;
-  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-  sTime.StoreOperation = RTC_STOREOPERATION_RESET;
-  HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+    // 1. Configure Time
+    sTime.Hours = (uint8_t)hh;
+    sTime.Minutes = (uint8_t)mm;
+    sTime.Seconds = (uint8_t)ss;
+    sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+    sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+    HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
 
-  // 2. Configure Date
-  sDate.Year = (uint8_t)(y - 2000); // 2026 -> 26
-  sDate.Month = (uint8_t)m;
-  sDate.Date = (uint8_t)d;
-  sDate.WeekDay =
-      RTC_WEEKDAY_SATURDAY; // You can calculate this, but HAL requires a value
+    // 2. Configure Date
+    sDate.Year = (uint8_t)(y - 2000); // 2026 -> 26
+    sDate.Month = (uint8_t)m;
+    sDate.Date = (uint8_t)d;
+    sDate.WeekDay = RTC_WEEKDAY_SATURDAY; // You can calculate this, but HAL requires a value
+    HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
 }
 
 
