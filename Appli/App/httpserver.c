@@ -63,6 +63,7 @@ typedef enum {
   SET_TIME,
   GET_DOSES,
   SET_DOSES,
+  CLEAR_DOSES,
   ERROR_404_HTML,
   UNKNOWN_RESPONSE
 } HttpServer_response_e;
@@ -157,6 +158,7 @@ HttpServer_response_t http_server_responses[] = {
     {SET_TIME, "PUT /time", example_put_response},
     {GET_DOSES, "GET /dose", example_log_response},
     {SET_DOSES, "PUT /dose", example_put_response},
+    {CLEAR_DOSES, "GET /clearDoses", example_put_response},
 };
 
 /* USER CODE BEGIN PV */
@@ -866,11 +868,9 @@ static int set_time(char *recv_buffer) {
 }
 
 static int get_doses() {
-
-  int result = 0;
   Dosage_t doses[5];
   int dosesRead = readDoses(doses, 5);
-  if (result < 0) {
+  if (dosesRead < 0) {
     build_http_error_response(full_response, sizeof(full_response), 400,
                               "Error: Failed to read doses");
     return -1;
@@ -963,6 +963,19 @@ static int set_doses(char *recv_buffer) {
   return 0;
 }
 
+static int clear_doses() {
+  int result = clearDoses();
+  if (result < 0) {
+    build_http_error_response(full_response, sizeof(full_response), 400,
+                              "Error: failed to clear doses");
+    return -1;
+  }
+
+  build_http_200_response(full_response, sizeof(full_response),
+                          "Doses cleared successfully");
+  return 0;
+}
+
 static void http_process_response(int32_t client, char *recv_buffer) {
   HttpServer_response_e response = UNKNOWN_RESPONSE;
   char *response_data = NULL;
@@ -1041,8 +1054,12 @@ static void http_process_response(int32_t client, char *recv_buffer) {
     response_data = full_response;
   }
 
-  if (response == UNKNOWN_RESPONSE) {
+  if (response == CLEAR_DOSES) {
+    clear_doses();
+    response_data = full_response;
+  }
 
+  if (response == UNKNOWN_RESPONSE) {
     build_http_error_response(full_response, sizeof(full_response), 400,
                               "Error: unknown request");
   }
