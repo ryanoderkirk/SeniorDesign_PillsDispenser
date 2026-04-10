@@ -72,6 +72,8 @@ int writeConfig(Config_t* config);
 
 int readConfig(Config_t* config, int channel);
 
+int clearConfig(int channel);
+
 int writeDose(Dosage_t* config);
 
 int readDoses(Dosage_t *doses, uint32_t bufferSize);

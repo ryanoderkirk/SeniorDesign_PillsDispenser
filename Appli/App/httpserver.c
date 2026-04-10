@@ -58,6 +58,7 @@ typedef enum {
   SET_LOG,
   GET_CONFIG,
   SET_CONFIG,
+  CLEAR_CONFIG,
   GET_TIME,
   SET_TIME,
   GET_DOSES,
@@ -151,6 +152,7 @@ HttpServer_response_t http_server_responses[] = {
     {SET_LOG, "PUT /log", example_put_response},
     {GET_CONFIG, "GET /config", example_log_response},
     {SET_CONFIG, "PUT /config", example_put_response},
+    {CLEAR_CONFIG, "GET /clearConfig", example_put_response},
     {GET_TIME, "GET /time", example_log_response},
     {SET_TIME, "PUT /time", example_put_response},
     {GET_DOSES, "GET /dose", example_log_response},
@@ -771,6 +773,52 @@ static int set_config(char *recv_buffer) {
   return 0;
 }
 
+static int clear_config(char *recv_buffer) {
+  int channel = -1;
+
+  // 1. Find the first space (after "GET")
+  char *uri_start = strchr(recv_buffer, ' ');
+  if (uri_start == NULL)
+    return -1;
+  uri_start++; // Move past the space to the '/'
+
+  // 2. Find the second space (before "HTTP/1.1")
+  char *uri_end = strchr(uri_start, ' ');
+  if (uri_end == NULL)
+    return -2;
+
+  // This turns "/config?ch=1 HTTP/1.1" into "/config?ch=1\0"
+  char original_char = *uri_end;
+  *uri_end = '\0';
+
+  // 4. Now use strchr to find '?' within the isolated URI
+  char *query = strchr(uri_start, '?');
+
+  if (query == NULL) {
+    build_http_error_response(full_response, sizeof(full_response), 404,
+                              "failed to parse get request");
+    return -3;
+  }
+
+  sscanf(query, "?ch=%d", &channel);
+  *uri_end = original_char;
+
+  if (!(channel > 0 && channel < 5)) {
+    build_http_error_response(full_response, sizeof(full_response), 404,
+                              "Incorrect channel number!");
+    return -4;
+  }
+
+  int result = clearConfig(channel);
+  if (result != 0) {
+    build_http_error_response(full_response, sizeof(full_response), 404,
+                              "config file has not been configured!");
+    return -5;
+  }
+  build_http_200_response(full_response, sizeof(full_response), "channel has been cleared");
+  return 0;
+}
+
 static int get_time() {
   RTC_DateTypeDef date;
   RTC_TimeTypeDef time;
@@ -965,6 +1013,11 @@ static void http_process_response(int32_t client, char *recv_buffer) {
 
   if (response == SET_CONFIG) {
     set_config(recv_buffer);
+    response_data = full_response;
+  }
+
+  if (response == CLEAR_CONFIG) {
+    clear_config(recv_buffer);
     response_data = full_response;
   }
 

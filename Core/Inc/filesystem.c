@@ -628,6 +628,33 @@ int readConfig(Config_t* config, int channel) {
   return 0;
 }
 
+int clearConfig(int channel) {
+  if (filesystemMutex == NULL)
+    return -1;
+
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
+  }
+
+  int result = 0;
+  const char *config_files[] = {"/config/one", "/config/two", "/config/three",
+                             "/config/four"};
+  if (channel > 4 || channel < 1) {
+    osMutexRelease(filesystemMutex);
+    return -1;
+  }
+
+  result = lfs_remove(&lfs, config_files[channel - 1]);
+  if (result != 0) {
+    osMutexRelease(filesystemMutex);
+    return -1;
+    }
+
+  osMutexRelease(filesystemMutex);
+  return 0;
+}
+
 int writeDose(Dosage_t *config) {
   if (filesystemMutex == NULL)
     return -1;
