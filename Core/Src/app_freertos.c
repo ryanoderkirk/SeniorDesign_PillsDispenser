@@ -27,6 +27,7 @@
 #include "filesystem.h"
 #include "logging.h"
 #include "UI.h"
+#include "ILI9341_STM32_Driver.h"
 
 /* USER CODE END Includes */
 

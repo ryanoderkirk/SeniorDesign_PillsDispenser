@@ -48,7 +48,11 @@ typedef struct dosage{
 	unsigned short hour;
 	unsigned short minute;
 	unsigned short pillAmounts[4];
-}dosage_t;
+	char p1[4];
+	char p2[4];
+	char p3[4];
+	char p4[4];
+}dosage_ui_t;
 
 /**
  * Initialize UI to known state (main)
@@ -87,7 +91,7 @@ void drawScreen();
 /**
  * Gets an array of dosages programmed
  */
-dosage_t* getDosages(unsigned short* numDosages);
+dosage_ui_t* getDosages(unsigned short* numDosages);
 
 /**
  * Handles all input

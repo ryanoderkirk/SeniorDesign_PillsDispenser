@@ -7,6 +7,7 @@
 
 #include "buttons.h"
 #include "UI.h"
+#include "filesystem.h"
 #include "ILI9341_STM32_Driver.h"
 #include "ILI9341_GFX.h"
 #include "fonts.h"
@@ -58,7 +59,7 @@ enum UISTATE prevState = NONE;
 short currentSelection = 0;
 short lastSelection = 0;
 
-dosage_t* dosageList = 0;
+dosage_ui_t* dosageList = 0;
 unsigned short numDosages = 0;
 unsigned short selectedDosage = 0;
 
@@ -68,6 +69,12 @@ short pinIndex = 0;
 enum UISTATE pinNextState = NONE;
 enum UISTATE pinReturnState = NONE;
 
+// holds dosage list
+dosage_ui_t dosages[5];
+
+//holds time string
+char time[6] = "10:037";
+// holds IP string
 char IP[16] = "000.000.000.000";
 /**
  * Handlers for default menu pages
@@ -314,7 +321,7 @@ void drawScreen(){
 			drawCursor();
 			break;
 		case DOSAGEINFO:
-			dosage_t* dose = dosageList + selectedDosage;
+			dosage_ui_t* dose = dosageList + selectedDosage;
 			ILI9341_DrawText(dose->name,FONT4,10,5,BLACK,WHITE);
 			// handle time
 			char doseTime[6] = "  :  ";
@@ -422,13 +429,12 @@ void drawMenuPageCursor(const menuPage_t* this){
 	drawCursorHandler(currentSelection, this->numOptions);
 }
 
-dosage_t* getDosages(unsigned short* num){
+dosage_ui_t* getDosages(unsigned short* num){
 	// returning a set dosages
 	// 4 different dosages
 	*num = 4;
-	dosage_t* dosages = malloc(sizeof(dosage_t)*(*num));
 
-	dosage_t* dose = dosages;
+	dosage_ui_t* dose = dosages;
 	dose->name[0] = 'm';
 	dose->name[1] = 'o';
 	dose->name[2] = 'r';
@@ -565,10 +571,8 @@ char* getIP(){
 	return IP;
 }
 
-char testTime[] = "10:37";
-
 char* getTime(){
-	return testTime;
+	return time;
 }
 
 void UI_handleInput(){
