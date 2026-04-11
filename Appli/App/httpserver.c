@@ -64,6 +64,8 @@ typedef enum {
   GET_DOSES,
   SET_DOSES,
   CLEAR_DOSES,
+  GET_PINCODE,
+  SET_PINCODE,
   ERROR_404_HTML,
   UNKNOWN_RESPONSE
 } HttpServer_response_e;
@@ -159,6 +161,7 @@ HttpServer_response_t http_server_responses[] = {
     {GET_DOSES, "GET /dose", example_log_response},
     {SET_DOSES, "PUT /dose", example_put_response},
     {CLEAR_DOSES, "GET /clearDoses", example_put_response},
+    {GET_PINCODE, "GET /pincode", example_put_response},
 };
 
 /* USER CODE BEGIN PV */
@@ -976,6 +979,22 @@ static int clear_doses() {
   return 0;
 }
 
+
+static int get_pincode() {
+  uint8_t pincode[5] = {0};
+  int result = readPincode(pincode);
+  if (result < 0) {
+    build_http_error_response(full_response, sizeof(full_response), 400,
+                              "Error: failed to read pincode");
+    return -1;
+  }
+  pincode[4] = '\0';
+  build_http_200_response(full_response, sizeof(full_response),
+                          (char*)pincode);
+
+  return 0;
+}
+
 static void http_process_response(int32_t client, char *recv_buffer) {
   HttpServer_response_e response = UNKNOWN_RESPONSE;
   char *response_data = NULL;
@@ -1056,6 +1075,11 @@ static void http_process_response(int32_t client, char *recv_buffer) {
 
   if (response == CLEAR_DOSES) {
     clear_doses();
+    response_data = full_response;
+  }
+
+  if (response == GET_PINCODE) {
+    get_pincode();
     response_data = full_response;
   }
 
