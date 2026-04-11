@@ -171,14 +171,14 @@ void StartDefaultTask(void *argument)
 
   for (;;) {
 
-    listLogFiles();
+    //listLogFiles();
 
     uint32_t adcValue = HAL_ADC_GetValue(hadc);
     if (isPillDetected()) {
-      LogInfo("\ndetected! (ADC: %lu)\n", adcValue);
+      //LogInfo("\ndetected! (ADC: %lu)\n", adcValue);
       resetPillFlag();
     } else {
-      LogInfo("\nnot detected! (ADC: %lu)\n", adcValue);
+      //LogInfo("\nnot detected! (ADC: %lu)\n", adcValue);
     }
     osDelay(2000);
   }

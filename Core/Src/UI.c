@@ -7,7 +7,9 @@
 
 #include "buttons.h"
 #include "UI.h"
+#include "main.h"
 #include "filesystem.h"
+#include "logging.h"
 #include "ILI9341_STM32_Driver.h"
 #include "ILI9341_GFX.h"
 #include "fonts.h"
@@ -59,7 +61,11 @@ enum UISTATE prevState = NONE;
 short currentSelection = 0;
 short lastSelection = 0;
 
-dosage_ui_t* dosageList = 0;
+
+// holds dosage list
+dosage_ui_t dosages[5];
+
+dosage_ui_t* dosageList = dosages;
 unsigned short numDosages = 0;
 unsigned short selectedDosage = 0;
 
@@ -69,11 +75,9 @@ short pinIndex = 0;
 enum UISTATE pinNextState = NONE;
 enum UISTATE pinReturnState = NONE;
 
-// holds dosage list
-dosage_ui_t dosages[5];
 
 //holds time string
-char time[6] = "10:037";
+char time[6] = "10:37";
 // holds IP string
 char IP[16] = "000.000.000.000";
 /**
@@ -127,10 +131,8 @@ void UI_init(){
 
 
 void changeState(UISTATE_t nextState){
+	LogDebug("UI Change State from %d to %d\n",currentState,nextState);
 	if(nextState == DOSAGELIST){
-		if(dosageList == 0){
-			free(dosageList);
-		}
 		dosageList = getDosages(&numDosages);
 	}
 	if(nextState == VERIFYPIN || nextState == CHANGEPIN){
@@ -147,6 +149,17 @@ void changeState(UISTATE_t nextState){
 	prevState = currentState;
 	currentState = nextState;
 	drawScreen();
+	if(nextState == DISPENSE){
+		// put dispense call here
+		// channel 1 is dosageList[selectedDosage].
+		unsigned short c1 = dosageList[selectedDosage].pillAmounts[0];
+		unsigned short c2 = dosageList[selectedDosage].pillAmounts[1];
+		unsigned short c3 = dosageList[selectedDosage].pillAmounts[2];
+		unsigned short c4 = dosageList[selectedDosage].pillAmounts[3];
+		// dispense(c1,c2,c3,c4);
+		// assuming blocking
+		changeState(MAIN);
+	}
 }
 
 void handleSelect(){
@@ -330,10 +343,10 @@ void drawScreen(){
 			doseTime[3] = dose->minute/10 + '0';
 			doseTime[4] = dose->minute%10 + '0';
 			ILI9341_DrawText(doseTime,FONT4,25,font3Height + initialOffset,BLACK,WHITE);
-			char pillAmount[5] = "p : ";
+			char pillAmount[10] = "p : ";
+			char* pillNames[4] = {dose->p1,dose->p2,dose->p3,dose->p4};
 			for(int i = 0; i < 4; ++i){
-				pillAmount[1] = i + '0';
-				pillAmount[3] = dose->pillAmounts[i] + '0';
+				sprintf(pillAmount,"%.4s:%02d",pillNames[i],dose->pillAmounts[i]);
 				ILI9341_DrawText(pillAmount,FONT4,25,(1+i)*font3Height + initialOffset,BLACK,WHITE);
 			}
 			break;
@@ -342,7 +355,7 @@ void drawScreen(){
 			drawPin();
 			break;
 		case DISPENSE:
-			ILI9341_DrawText("DISPENSE NOW",FONT4,10,5,BLACK,WHITE);
+			ILI9341_DrawText("DISPENSING NOW",FONT4,10,5,BLACK,WHITE);
 			ILI9341_DrawText(dosageList[selectedDosage].name,FONT3,25,25,BLACK,WHITE);
 			break;
 		case SHOWTIME:
@@ -431,6 +444,38 @@ void drawMenuPageCursor(const menuPage_t* this){
 
 dosage_ui_t* getDosages(unsigned short* num){
 	// returning a set dosages
+	//LogDebug("Entering get dosages\n");
+	Dosage_t fsDosage[5];
+	int num_doses = readDoses(fsDosage,5);
+	if(num_doses < 0){
+		LogDebug("Bad File Read in UI.\n");
+		num = 0;
+		return dosages;
+	}
+	*num = num_doses;
+	for(int i = 0; i < num_doses; ++i){
+		dosage_ui_t* dose = dosages + i;
+		sprintf(dose->name,"%02d:%02d",fsDosage[i].hour,fsDosage[i].min);
+		//LogDebug("%s\n",dose->name);
+		// pill one name
+		sprintf(dose->p1,"%.4s",fsDosage[i].pillOne);
+		// pill two name
+		sprintf(dose->p2,"%.4s",fsDosage[i].pillTwo);
+		// pill three name
+		sprintf(dose->p3,"%.4s",fsDosage[i].pillThree);
+		// pill four name
+		sprintf(dose->p4,"%.4s",fsDosage[i].pillFour);
+
+		//LogDebug("%s\n",dose->p1);
+		//LogDebug("%s\n",dose->p2);
+		//LogDebug("%s\n",dose->p3);
+		//LogDebug("%s\n",dose->p4);
+		dose->pillAmounts[0] = fsDosage[i].pillOneCount;
+		dose->pillAmounts[1] = fsDosage[i].pillTwoCount;
+		dose->pillAmounts[2] = fsDosage[i].pillThreeCount;
+		dose->pillAmounts[3] = fsDosage[i].pillFourCount;
+	}
+/*
 	// 4 different dosages
 	*num = 4;
 
@@ -492,7 +537,7 @@ dosage_ui_t* getDosages(unsigned short* num){
 	dose->pillAmounts[1] = 0;
 	dose->pillAmounts[2] = 0;
 	dose->pillAmounts[3] = 1;
-
+*/
 	return dosages;
 }
 
@@ -572,6 +617,11 @@ char* getIP(){
 }
 
 char* getTime(){
+	  RTC_DateTypeDef rtcDate;
+	  RTC_TimeTypeDef rtcTime;
+	  get_rtc_typedef(&rtcDate, &rtcTime);
+	  sprintf(time,"%02d:%02d",rtcTime.Hours,rtcTime.Minutes);
+	  LogDebug("%s\n",time);
 	return time;
 }
 

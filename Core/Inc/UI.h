@@ -48,10 +48,10 @@ typedef struct dosage{
 	unsigned short hour;
 	unsigned short minute;
 	unsigned short pillAmounts[4];
-	char p1[4];
-	char p2[4];
-	char p3[4];
-	char p4[4];
+	char p1[5];
+	char p2[5];
+	char p3[5];
+	char p4[5];
 }dosage_ui_t;
 
 /**

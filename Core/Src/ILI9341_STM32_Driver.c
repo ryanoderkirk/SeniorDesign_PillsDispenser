@@ -20,16 +20,16 @@ static void ILI9341_SPI_Tx(uint8_t data) {
   while (HAL_DMA_GetState(&handle_GPDMA1_Channel2) == HAL_DMA_STATE_BUSY)
     osDelay(1);
   HAL_SPI_Transmit_DMA(HSPI_INSTANCE, &data, 1);
-  //while (HAL_DMA_GetState(&handle_GPDMA1_Channel2) == HAL_DMA_STATE_BUSY)
-    //osDelay(1);
+  while (HAL_DMA_GetState(&handle_GPDMA1_Channel2) == HAL_DMA_STATE_BUSY)
+    osDelay(1);
 }
 
 static void ILI9341_SPI_TxBuffer(uint8_t *buffer, uint16_t len) {
   while (HAL_DMA_GetState(&handle_GPDMA1_Channel2) == HAL_DMA_STATE_BUSY)
     osDelay(1);
   HAL_SPI_Transmit_DMA(HSPI_INSTANCE, buffer, len);
-  //while (HAL_DMA_GetState(&handle_GPDMA1_Channel2) == HAL_DMA_STATE_BUSY)
-    //osDelay(1);
+  while (HAL_DMA_GetState(&handle_GPDMA1_Channel2) == HAL_DMA_STATE_BUSY)
+    osDelay(1);
 }
 
 void ILI9341_WriteCommand(uint8_t cmd) {
