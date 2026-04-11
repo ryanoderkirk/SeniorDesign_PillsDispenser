@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+static uint32_t GATE_CHANNEL = TIM_CHANNEL_1;
+
 int dispensePills(uint32_t channel, uint32_t numberPills) {
   // ensure PWM timer and ADC are enabled and functioning
   // configure timer
@@ -199,18 +201,23 @@ while (totalPills < numberPills)
 return -1;
 }
 
+
+int dispenseDosage(const Dosage_t* dosage) {
+  return 0;
+}
+
 int openGate() {
     TIM_HandleTypeDef* htimGate = Get_PWM_Gate_Handle();
-    run270Servo(*htimGate, TIM_CHANNEL_3, 0);
+    run270Servo(*htimGate, GATE_CHANNEL, 0);
     HAL_Delay(500);
-    HAL_TIM_PWM_Stop(htimGate, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Stop(htimGate, GATE_CHANNEL);
     return 0;
 }
 
 int closeGate() {
     TIM_HandleTypeDef* htimGate = Get_PWM_Gate_Handle();
-    run270Servo(*htimGate, TIM_CHANNEL_3, 90);
+    run270Servo(*htimGate, GATE_CHANNEL, 90);
     HAL_Delay(500);
-    HAL_TIM_PWM_Stop(htimGate, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Stop(htimGate, GATE_CHANNEL);
     return 0;
 }
