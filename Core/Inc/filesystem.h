@@ -72,6 +72,12 @@ int writeConfig(Config_t* config);
 
 int readConfig(Config_t* config, int channel);
 
+//write 4 digit pincode to filesystem. pincode parameter is expexted to be 4 bytes
+int writePincode(const uint8_t* pincode);
+
+//read 4 digit pincode from filesystem. pincode parameter is expected to be at least 4 bytes
+int readPincode(uint8_t* pincode);
+
 int clearConfig(int channel);
 
 int writeDose(Dosage_t* config);

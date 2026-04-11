@@ -16,6 +16,7 @@
 #define FLASH_CMD_SECTOR_ERASE 0x20
 #define FLASH_CMD_DEVICE_ID 0x90A
 
+#define PINCODE_SIZE 4
 
 osMutexId_t filesystemMutex;
 
@@ -699,6 +700,84 @@ int writeDose(Dosage_t *config) {
   return 0;
 }
 
+int writePincode(const uint8_t* pincode) {
+  if (filesystemMutex == NULL)
+    return -1;
+
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
+  }
+
+  int result = 0;
+
+  result = lfs_file_open(&lfs, &file, pinCodeFilePath,
+                         LFS_O_CREAT | LFS_O_WRONLY | LFS_O_TRUNC);
+  if (result != 0) {
+    osMutexRelease(filesystemMutex);
+    return -1;
+  }
+
+  result = lfs_file_write(&lfs, &file, pincode, PINCODE_SIZE);
+  if (result != PINCODE_SIZE) {
+    lfs_file_close(&lfs, &file);
+    osMutexRelease(filesystemMutex);
+    return -1;
+  }
+
+  result = lfs_file_close(&lfs, &file);
+  if (result != 0) {
+    osMutexRelease(filesystemMutex);
+    return -1;
+  }
+
+  osMutexRelease(filesystemMutex);
+  return 0;
+}
+
+
+int readPincode(uint8_t* pincode) {
+
+  if (filesystemMutex == NULL)
+    return -1;
+
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
+  }
+
+  int result = lfs_file_open(&lfs, &file, pinCodeFilePath , LFS_O_RDONLY);
+  if (result != 0) {
+    // file not yet created
+    osMutexRelease(filesystemMutex);
+    return -1;
+  }
+
+  lfs_soff_t size = lfs_file_size(&lfs, &file);
+  if (size < PINCODE_SIZE) {
+    lfs_file_close(&lfs, &file);
+    // File too small/empty
+    osMutexRelease(filesystemMutex);
+    return -2;
+  }
+
+  result = lfs_file_read(&lfs, &file, pincode, PINCODE_SIZE);
+  if (result != PINCODE_SIZE) {
+    lfs_file_close(&lfs, &file);
+    osMutexRelease(filesystemMutex);
+    return -1;
+  }
+
+  result = lfs_file_close(&lfs, &file);
+  if (result != 0) {
+    osMutexRelease(filesystemMutex);
+    return -1;
+  }
+
+  osMutexRelease(filesystemMutex);
+  return 0;
+}
+
 int readDoses(Dosage_t *doses, uint32_t bufferSize) {
 
   if (filesystemMutex == NULL)
@@ -716,7 +795,7 @@ int readDoses(Dosage_t *doses, uint32_t bufferSize) {
   }
   int result = 0;
 
-  result = lfs_file_open(&lfs, &file, doseFilePath , LFS_O_RDONLY);
+  result = lfs_file_open(&lfs, &file, pinCodeFilePath , LFS_O_RDONLY);
   if (result != 0) {
     // file not yet created
     osMutexRelease(filesystemMutex);
