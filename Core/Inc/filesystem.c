@@ -48,7 +48,8 @@ static const struct lfs_config cfg = {
     .block_cycles = 500,
 };
 
-static const char doseFile[] = "/config/doses";
+static const char doseFilePath[] = "/config/doses";
+static const char pinCodeFilePath[] = "/config/pincode";
 
 // Send write enable command. Return 0 if flash chip is ready to be written to
 static int flash_write_enable(void) {
@@ -315,7 +316,7 @@ int filesystemInit() {
     }
   }
 
-  result = lfs_file_open(&lfs, &file, doseFile, LFS_O_CREAT | LFS_O_RDWR);
+  result = lfs_file_open(&lfs, &file, doseFilePath, LFS_O_CREAT | LFS_O_RDWR);
   if (result < 0) {
     return -1;
   }
@@ -666,7 +667,7 @@ int writeDose(Dosage_t *config) {
 
   int result = 0;
 
-  result = lfs_file_open(&lfs, &file, doseFile,
+  result = lfs_file_open(&lfs, &file, doseFilePath,
                          LFS_O_CREAT | LFS_O_WRONLY | LFS_O_APPEND);
   if (result != 0) {
     osMutexRelease(filesystemMutex);
@@ -715,7 +716,7 @@ int readDoses(Dosage_t *doses, uint32_t bufferSize) {
   }
   int result = 0;
 
-  result = lfs_file_open(&lfs, &file, doseFile , LFS_O_RDONLY);
+  result = lfs_file_open(&lfs, &file, doseFilePath , LFS_O_RDONLY);
   if (result != 0) {
     // file not yet created
     osMutexRelease(filesystemMutex);
@@ -776,7 +777,7 @@ int clearDoses() {
     LogDebug("Could not acquire filesystem mutex!");
     return -2;
   }
-  int result = lfs_remove(&lfs, doseFile);
+  int result = lfs_remove(&lfs, doseFilePath);
 
   // If the file is already gone (not found), return success
   if (result == LFS_ERR_NOENT) {
@@ -802,7 +803,7 @@ int countDoses() {
     LogDebug("Could not acquire filesystem mutex!");
     return -2;
   }
-    int result = lfs_file_open(&lfs, &file, doseFile, LFS_O_RDONLY);
+    int result = lfs_file_open(&lfs, &file, doseFilePath, LFS_O_RDONLY);
     if (result < 0) {
       osMutexRelease(filesystemMutex);
       return 0; // If file doesn't exist, count is 0
