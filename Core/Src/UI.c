@@ -77,7 +77,7 @@ enum UISTATE pinReturnState = NONE;
 
 
 //holds time string
-char time[6] = "10:37";
+char time[8] = "10:37";
 // holds IP string
 char IP[16] = "000.000.000.000";
 /**
@@ -343,7 +343,7 @@ void drawScreen(){
 			doseTime[3] = dose->minute/10 + '0';
 			doseTime[4] = dose->minute%10 + '0';
 			ILI9341_DrawText(doseTime,FONT4,25,font3Height + initialOffset,BLACK,WHITE);
-			char pillAmount[10] = "p : ";
+			char pillAmount[11];
 			char* pillNames[4] = {dose->p1,dose->p2,dose->p3,dose->p4};
 			for(int i = 0; i < 4; ++i){
 				sprintf(pillAmount,"%.4s:%02d",pillNames[i],dose->pillAmounts[i]);

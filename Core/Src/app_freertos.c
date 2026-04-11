@@ -27,6 +27,8 @@
 #include "filesystem.h"
 #include "logging.h"
 #include "UI.h"
+#include "Alert.h"
+#include "servoControl.h"
 #include "ILI9341_STM32_Driver.h"
 
 /* USER CODE END Includes */
@@ -62,6 +64,13 @@ osThreadId_t UI_TaskHandle;
 const osThreadAttr_t UI_Task_attributes = {
   .name = "UI_Task",
   .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 1024 * 4
+};
+/* Definitions for alert_Task */
+osThreadId_t alert_TaskHandle;
+const osThreadAttr_t alert_Task_attributes = {
+  .name = "alert_Task",
+  .priority = (osPriority_t) osPriorityNormal,
   .stack_size = 1024 * 4
 };
 
@@ -100,6 +109,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of UI_Task */
   UI_TaskHandle = osThreadNew(UI_Task, NULL, &UI_Task_attributes);
+
+  /* creation of alert_Task */
+  alert_TaskHandle = osThreadNew(alert_Task, NULL, &alert_Task_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -171,14 +183,14 @@ void StartDefaultTask(void *argument)
 
   for (;;) {
 
-    //listLogFiles();
+    listLogFiles();
 
     uint32_t adcValue = HAL_ADC_GetValue(hadc);
     if (isPillDetected()) {
-      //LogInfo("\ndetected! (ADC: %lu)\n", adcValue);
+      LogInfo("\ndetected! (ADC: %lu)\n", adcValue);
       resetPillFlag();
     } else {
-      //LogInfo("\nnot detected! (ADC: %lu)\n", adcValue);
+      LogInfo("\nnot detected! (ADC: %lu)\n", adcValue);
     }
     osDelay(2000);
   }
@@ -205,6 +217,28 @@ void UI_Task(void *argument)
     osDelay(100);
   }
   /* USER CODE END UI_Task */
+}
+
+/* USER CODE BEGIN Header_alert_Task */
+/**
+* @brief Function implementing the alert_Task thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_alert_Task */
+void alert_Task(void *argument)
+{
+  /* USER CODE BEGIN alert_Task */
+  /* Infinite loop */
+  for(;;)
+  {
+	  checkDosageAlert();
+	  checkLowPillAlert();
+	  LogDebug("Dosage Alert:%d\n",dosageAlert);
+	  LogDebug("Low Pill Alert:%d\n",lowPillAlert);
+    osDelay(1000*60);
+  }
+  /* USER CODE END alert_Task */
 }
 
 /* Private application code --------------------------------------------------*/
