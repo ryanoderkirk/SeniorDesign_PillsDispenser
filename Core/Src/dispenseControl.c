@@ -203,6 +203,111 @@ return -1;
 
 
 int dispenseDosage(const Dosage_t* dosage) {
+  // ensure that the pills specified in the dosage exist in a channel, and that there are enough of them
+
+  //map dose (index +1) to the channel its located in
+  uint8_t doseChannel[4] = {0};
+  //map dose (index +1) to the channel its located in
+  uint8_t doseChannelCount[4] = {0};
+
+  int pillExists = -1;
+  if(dosage->pillOne[0] != '\0' ) {
+    for (int i = 1; i < 5; i++) {
+      Config_t channelConfig;
+      int result = readConfig(&channelConfig, i);
+      if (strcmp((char*)dosage->pillOne, (char*)channelConfig.pillName) == 0) {
+        if (dosage->pillOneCount > channelConfig.pillCount) {
+          LogDebug("Not enough pills in channel to dispense");
+          return -1;
+        }
+        doseChannel[0] = i;
+        doseChannelCount[0] = dosage->pillOneCount;
+        pillExists = 0;
+        break;
+      }
+    }
+    if (pillExists != 0) {
+      LogDebug("Could not find pill");
+      return -1;
+    }
+  }
+
+  pillExists = -1;
+  if(dosage->pillTwo[0] != '\0' ) {
+    for (int i = 1; i < 5; i++) {
+      Config_t channelConfig;
+      int result = readConfig(&channelConfig, i);
+      if (strcmp((char*)dosage->pillTwo, (char*)channelConfig.pillName) == 0) {
+        if (dosage->pillTwoCount > channelConfig.pillCount) {
+          LogDebug("Not enough pills in channel to dispense");
+          return -1;
+        }
+        doseChannel[1] = i;
+        doseChannelCount[1] = dosage->pillTwoCount;
+        pillExists = 0;
+        break;
+      }
+    }
+    if (pillExists != 0) {
+      LogDebug("Could not find pill");
+      return -2;
+    }
+  }
+
+  pillExists = -1;
+  if(dosage->pillThree[0] != '\0' ) {
+    for (int i = 1; i < 5; i++) {
+      Config_t channelConfig;
+      int result = readConfig(&channelConfig, i);
+      if (strcmp((char*)dosage->pillThree, (char*)channelConfig.pillName) == 0) {
+        if (dosage->pillThreeCount > channelConfig.pillCount) {
+          LogDebug("Not enough pills in channel to dispense");
+          return -1;
+        }
+        doseChannel[2] = i;
+        doseChannelCount[2] = dosage->pillThreeCount;
+        pillExists = 0;
+        break;
+      }
+    }
+    if (pillExists != 0) {
+      LogDebug("Could not find pill");
+      return -1;
+    }
+  }
+
+  pillExists = -1;
+  if(dosage->pillFour[0] != '\0' ) {
+    for (int i = 1; i < 5; i++) {
+      Config_t channelConfig;
+      int result = readConfig(&channelConfig, i);
+      if (strcmp((char*)dosage->pillFour, (char*)channelConfig.pillName) == 0) {
+        if (dosage->pillFourCount > channelConfig.pillCount) {
+          LogDebug("Not enough pills in channel to dispense");
+          return -1;
+        }
+        doseChannel[3] = i;
+        doseChannelCount[3] = dosage->pillFourCount;
+        pillExists = 0;
+        break;
+      }
+    }
+    if (pillExists != 0) {
+      LogDebug("Could not find pill");
+      return -1;
+    }
+  }
+
+  for(int i = 0; i<4; i++) {
+    if (doseChannel[i] == 0)
+      continue;
+    int result = dispensePills(doseChannel[i], doseChannelCount[i]);
+    if (result != 0) {
+      LogDebug("Failed to dispense pills");
+      return -1;
+    }
+  }
+
   return 0;
 }
 
