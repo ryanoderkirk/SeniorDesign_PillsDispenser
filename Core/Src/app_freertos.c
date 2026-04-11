@@ -26,6 +26,8 @@
 #include "dispenseControl.h"
 #include "filesystem.h"
 #include "logging.h"
+#include "UI.h"
+#include "ILI9341_STM32_Driver.h"
 
 /* USER CODE END Includes */
 
@@ -53,6 +55,13 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .priority = (osPriority_t) osPriorityAboveNormal4,
+  .stack_size = 1024 * 4
+};
+/* Definitions for UI_Task */
+osThreadId_t UI_TaskHandle;
+const osThreadAttr_t UI_Task_attributes = {
+  .name = "UI_Task",
+  .priority = (osPriority_t) osPriorityLow,
   .stack_size = 1024 * 4
 };
 
@@ -88,6 +97,9 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* creation of UI_Task */
+  UI_TaskHandle = osThreadNew(UI_Task, NULL, &UI_Task_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -159,18 +171,40 @@ void StartDefaultTask(void *argument)
 
   for (;;) {
 
-    listLogFiles();
+    //listLogFiles();
 
     uint32_t adcValue = HAL_ADC_GetValue(hadc);
     if (isPillDetected()) {
-      LogInfo("\ndetected! (ADC: %lu)\n", adcValue);
+      //LogInfo("\ndetected! (ADC: %lu)\n", adcValue);
       resetPillFlag();
     } else {
-      LogInfo("\nnot detected! (ADC: %lu)\n", adcValue);
+      //LogInfo("\nnot detected! (ADC: %lu)\n", adcValue);
     }
     osDelay(2000);
   }
   /* USER CODE END defaultTask */
+}
+
+/* USER CODE BEGIN Header_UI_Task */
+/**
+* @brief Function implementing the UI_Task thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_UI_Task */
+void UI_Task(void *argument)
+{
+  /* USER CODE BEGIN UI_Task */
+	  ILI9341_Init();
+	  UI_init();
+
+  /* Infinite loop */
+  for(;;)
+  {
+	UI_handleInput();
+    osDelay(100);
+  }
+  /* USER CODE END UI_Task */
 }
 
 /* Private application code --------------------------------------------------*/
