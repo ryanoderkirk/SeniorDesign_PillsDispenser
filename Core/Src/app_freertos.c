@@ -135,19 +135,13 @@ void StartDefaultTask(void *argument)
     */
   /* Infinite loop */
 
-  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_1, 90);
-  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_2, 90);
-  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_3, 90);
-  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_4, 90);
-  run270Servo(*Get_PWM_Gate_Handle(), TIM_CHANNEL_1, 90);
-  run270Servo(*Get_PWM_Gate_Handle(), TIM_CHANNEL_2, 90);
   // Configure ADC to listen to channel specified
   ADC_HandleTypeDef *hadc = Get_ADC_Handle();
   ADC_AnalogWDGConfTypeDef AnalogWDGConfig = {0};
   ADC_ChannelConfTypeDef sConfig = {0};
   AnalogWDGConfig.WatchdogNumber = ADC_ANALOGWATCHDOG_1;
   AnalogWDGConfig.WatchdogMode = ADC_ANALOGWATCHDOG_SINGLE_REG;
-  AnalogWDGConfig.Channel = ADC_CHANNEL_3;
+  AnalogWDGConfig.Channel = ADC_CHANNEL_1;
   AnalogWDGConfig.ITMode = ENABLE;
   AnalogWDGConfig.HighThreshold = 4095;
   AnalogWDGConfig.LowThreshold = 620;
@@ -155,7 +149,7 @@ void StartDefaultTask(void *argument)
   if (HAL_ADC_AnalogWDGConfig(hadc, &AnalogWDGConfig) != HAL_OK) {
     Error_Handler();
   }
-  sConfig.Channel = ADC_CHANNEL_3;
+  sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
@@ -170,17 +164,11 @@ void StartDefaultTask(void *argument)
   HAL_ADC_Start_IT(hadc);
 
   for (;;) {
+    Dosage_t dose;
+    int result = readDoses(&dose, 1);
+    result = dispenseDosage(&dose);
 
-    //listLogFiles();
-
-    uint32_t adcValue = HAL_ADC_GetValue(hadc);
-    if (isPillDetected()) {
-      //LogInfo("\ndetected! (ADC: %lu)\n", adcValue);
-      resetPillFlag();
-    } else {
-      //LogInfo("\nnot detected! (ADC: %lu)\n", adcValue);
-    }
-    osDelay(2000);
+    osDelay(99999);
   }
   /* USER CODE END defaultTask */
 }

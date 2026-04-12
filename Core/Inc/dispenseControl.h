@@ -7,6 +7,7 @@
 #define DISPENSECONTROLX_H
 
 #include "stm32h5xx_hal.h"
+#include "filesystem.h"
 #include <stdint.h>
 
 typedef enum {
@@ -17,6 +18,7 @@ typedef enum {
 } channel_e;
 
 int dispensePills(uint32_t channel, uint32_t numberPills);
+int dispenseDosage(const Dosage_t* dosage);
 
 int openGate();
 int closeGate();

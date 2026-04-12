@@ -9,6 +9,9 @@
 #include "stm32h5xx_hal.h"
 #include <stdint.h>
 #include <stdio.h>
+#include "logging.h"
+
+static uint32_t GATE_CHANNEL = TIM_CHANNEL_1;
 
 int dispensePills(uint32_t channel, uint32_t numberPills) {
   // ensure PWM timer and ADC are enabled and functioning
@@ -199,18 +202,134 @@ while (totalPills < numberPills)
 return -1;
 }
 
+
+int dispenseDosage(const Dosage_t* dosage) {
+  // ensure that the pills specified in the dosage exist in a channel, and that there are enough of them
+
+  //map dose (index +1) to the channel its located in
+  uint8_t doseChannel[4] = {0};
+  //map dose (index +1) to the channel its located in
+  uint8_t doseChannelCount[4] = {0};
+
+  int pillExists = -1;
+  if(dosage->pillOne[0] != '\0' ) {
+    for (int i = 1; i < 5; i++) {
+      Config_t channelConfig;
+      int result = readConfig(&channelConfig, i);
+      if (strcmp((char*)dosage->pillOne, (char*)channelConfig.pillName) == 0) {
+        if (dosage->pillOneCount > channelConfig.pillCount) {
+          LogDebug("Not enough pills in channel to dispense");
+          return -1;
+        }
+        doseChannel[0] = i;
+        doseChannelCount[0] = dosage->pillOneCount;
+        pillExists = 0;
+        break;
+      }
+    }
+    if (pillExists != 0) {
+      LogDebug("Could not find pill");
+      return -1;
+    }
+  }
+
+  pillExists = -1;
+  if(dosage->pillTwo[0] != '\0' ) {
+    for (int i = 1; i < 5; i++) {
+      Config_t channelConfig;
+      int result = readConfig(&channelConfig, i);
+      if (strcmp((char*)dosage->pillTwo, (char*)channelConfig.pillName) == 0) {
+        if (dosage->pillTwoCount > channelConfig.pillCount) {
+          LogDebug("Not enough pills in channel to dispense");
+          return -1;
+        }
+        doseChannel[1] = i;
+        doseChannelCount[1] = dosage->pillTwoCount;
+        pillExists = 0;
+        break;
+      }
+    }
+    if (pillExists != 0) {
+      LogDebug("Could not find pill");
+      return -2;
+    }
+  }
+
+  pillExists = -1;
+  if(dosage->pillThree[0] != '\0' ) {
+    for (int i = 1; i < 5; i++) {
+      Config_t channelConfig;
+      int result = readConfig(&channelConfig, i);
+      if (strcmp((char*)dosage->pillThree, (char*)channelConfig.pillName) == 0) {
+        if (dosage->pillThreeCount > channelConfig.pillCount) {
+          LogDebug("Not enough pills in channel to dispense");
+          return -1;
+        }
+        doseChannel[2] = i;
+        doseChannelCount[2] = dosage->pillThreeCount;
+        pillExists = 0;
+        break;
+      }
+    }
+    if (pillExists != 0) {
+      LogDebug("Could not find pill");
+      return -1;
+    }
+  }
+
+  pillExists = -1;
+  if(dosage->pillFour[0] != '\0' ) {
+    for (int i = 1; i < 5; i++) {
+      Config_t channelConfig;
+      int result = readConfig(&channelConfig, i);
+      if (strcmp((char*)dosage->pillFour, (char*)channelConfig.pillName) == 0) {
+        if (dosage->pillFourCount > channelConfig.pillCount) {
+          LogDebug("Not enough pills in channel to dispense");
+          return -1;
+        }
+        doseChannel[3] = i;
+        doseChannelCount[3] = dosage->pillFourCount;
+        pillExists = 0;
+        break;
+      }
+    }
+    if (pillExists != 0) {
+      LogDebug("Could not find pill");
+      return -1;
+    }
+  }
+
+  for(int i = 0; i<4; i++) {
+    if (doseChannel[i] == 0)
+      continue;
+    int result = 0;//dispensePills(doseChannel[i], doseChannelCount[i]);
+    if (result != 0) {
+      LogDebug("Failed to dispense pills");
+      return -1;
+    }
+    //decrement pills picked
+    Config_t config;
+    if(readConfig(&config, doseChannel[i]) == 0) {
+    	config.pillCount -= doseChannelCount[i];
+    	writeConfig(&config);
+    }
+  }
+
+  return 0;
+}
+
 int openGate() {
     TIM_HandleTypeDef* htimGate = Get_PWM_Gate_Handle();
-    run270Servo(*htimGate, TIM_CHANNEL_3, 0);
+    run270Servo(*htimGate, GATE_CHANNEL, 0);
     HAL_Delay(500);
-    HAL_TIM_PWM_Stop(htimGate, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Stop(htimGate, GATE_CHANNEL);
     return 0;
 }
 
 int closeGate() {
     TIM_HandleTypeDef* htimGate = Get_PWM_Gate_Handle();
-    run270Servo(*htimGate, TIM_CHANNEL_3, 90);
+    run270Servo(*htimGate, GATE_CHANNEL, 90);
     HAL_Delay(500);
-    HAL_TIM_PWM_Stop(htimGate, TIM_CHANNEL_3);
+    HAL_TIM_PWM_Stop(htimGate, GATE_CHANNEL);
     return 0;
 }

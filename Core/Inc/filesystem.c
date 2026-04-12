@@ -795,7 +795,7 @@ int readDoses(Dosage_t *doses, uint32_t bufferSize) {
   }
   int result = 0;
 
-  result = lfs_file_open(&lfs, &file, pinCodeFilePath , LFS_O_RDONLY);
+  result = lfs_file_open(&lfs, &file, doseFilePath , LFS_O_RDONLY);
   if (result != 0) {
     // file not yet created
     osMutexRelease(filesystemMutex);
