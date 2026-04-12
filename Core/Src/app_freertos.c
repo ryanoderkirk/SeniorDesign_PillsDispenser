@@ -164,39 +164,11 @@ void StartDefaultTask(void *argument)
   HAL_ADC_Start_IT(hadc);
 
   for (;;) {
-/*
-  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_1, 270);
-  osDelay(100);
-  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_2, 270);
-  osDelay(100);
-  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_3, 270);
-  osDelay(100);
-  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_4, 270);
-  osDelay(100);
-  run270Servo(*Get_PWM_Gate_Handle(), TIM_CHANNEL_1, 90);
-  osDelay(100);
-  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_1, 0);
-  osDelay(100);
-  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_2, 0);
-  osDelay(100);
-  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_3, 0);
-  osDelay(100);
-  run270Servo(*Get_PWM_Dispense_Handle(), TIM_CHANNEL_4, 0);
-  osDelay(100);
-  run180Servo(*Get_PWM_Gate_Handle(), TIM_CHANNEL_1, 0);
-  osDelay(100);
-  */
-    //listLogFiles();
+    Dosage_t dose;
+    int result = readDoses(&dose, 1);
+    result = dispenseDosage(&dose);
 
-    uint32_t adcValue = HAL_ADC_GetValue(hadc);
-    LogInfo("\n(ADC: %lu)\n", adcValue);
-    if (isPillDetected()) {
-      //LogInfo("\ndetected! (ADC: %lu)\n", adcValue);
-      resetPillFlag();
-    } else {
-      //LogInfo("\nnot detected! (ADC: %lu)\n", adcValue);
-    }
-    osDelay(2000);
+    osDelay(99999);
   }
   /* USER CODE END defaultTask */
 }

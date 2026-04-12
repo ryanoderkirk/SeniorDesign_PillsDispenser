@@ -9,6 +9,7 @@
 #include "stm32h5xx_hal.h"
 #include <stdint.h>
 #include <stdio.h>
+#include "logging.h"
 
 static uint32_t GATE_CHANNEL = TIM_CHANNEL_1;
 
@@ -301,10 +302,16 @@ int dispenseDosage(const Dosage_t* dosage) {
   for(int i = 0; i<4; i++) {
     if (doseChannel[i] == 0)
       continue;
-    int result = dispensePills(doseChannel[i], doseChannelCount[i]);
+    int result = 0;//dispensePills(doseChannel[i], doseChannelCount[i]);
     if (result != 0) {
       LogDebug("Failed to dispense pills");
       return -1;
+    }
+    //decrement pills picked
+    Config_t config;
+    if(readConfig(&config, doseChannel[i]) == 0) {
+    	config.pillCount -= doseChannelCount[i];
+    	writeConfig(&config);
     }
   }
 
