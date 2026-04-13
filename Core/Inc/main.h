@@ -56,6 +56,13 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
+uint32_t isPillDetected();
+uint32_t resetPillFlag();
+
+extern uint32_t GPIOpillDetected[];
+uint32_t GPIOisPillDetected(int channel);
+uint32_t GPIOresetPillFlag(int channel);
+
 // Dispenser handle functions
 ADC_HandleTypeDef* Get_ADC_Handle(void);
 TIM_HandleTypeDef* Get_PWM_Dispense_Handle(void);
@@ -88,6 +95,18 @@ void update_system_time(int y, int m, int d, int hh, int mm, int ss);
 #define LCD_CS_GPIO_Port GPIOC
 #define LCD_DC_Pin GPIO_PIN_3
 #define LCD_DC_GPIO_Port GPIOC
+#define CHANNEL4_Pin GPIO_PIN_11
+#define CHANNEL4_GPIO_Port GPIOE
+#define CHANNEL4_EXTI_IRQn EXTI11_IRQn
+#define CHANNEL3_Pin GPIO_PIN_13
+#define CHANNEL3_GPIO_Port GPIOE
+#define CHANNEL3_EXTI_IRQn EXTI13_IRQn
+#define CHANNEL2_Pin GPIO_PIN_14
+#define CHANNEL2_GPIO_Port GPIOE
+#define CHANNEL2_EXTI_IRQn EXTI14_IRQn
+#define CHANNEL1_Pin GPIO_PIN_15
+#define CHANNEL1_GPIO_Port GPIOE
+#define CHANNEL1_EXTI_IRQn EXTI15_IRQn
 #define DEBUG_USART_TX_Pin GPIO_PIN_8
 #define DEBUG_USART_TX_GPIO_Port GPIOD
 #define DEBUG_USART_RX_Pin GPIO_PIN_9

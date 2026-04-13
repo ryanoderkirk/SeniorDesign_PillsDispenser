@@ -144,14 +144,14 @@ void StartDefaultTask(void *argument)
   AnalogWDGConfig.Channel = ADC_CHANNEL_1;
   AnalogWDGConfig.ITMode = ENABLE;
   AnalogWDGConfig.HighThreshold = 4095;
-  AnalogWDGConfig.LowThreshold = 620;
+  AnalogWDGConfig.LowThreshold = 2800;
   AnalogWDGConfig.FilteringConfig = ADC_AWD_FILTERING_8SAMPLES;
   if (HAL_ADC_AnalogWDGConfig(hadc, &AnalogWDGConfig) != HAL_OK) {
     Error_Handler();
   }
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_6CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
@@ -164,11 +164,39 @@ void StartDefaultTask(void *argument)
   HAL_ADC_Start_IT(hadc);
 
   for (;;) {
-    Dosage_t dose;
-    int result = readDoses(&dose, 1);
-    result = dispenseDosage(&dose);
-
-    osDelay(99999);
+    run270Servo(Get_PWM_Dispense_Handle(), TIM_CHANNEL_1, 0);
+    osDelay(1000);
+    run270Servo(Get_PWM_Dispense_Handle(), TIM_CHANNEL_1, 60);
+    osDelay(1000);
+    run270Servo(Get_PWM_Dispense_Handle(), TIM_CHANNEL_2, 0);
+    osDelay(1000);
+    run270Servo(Get_PWM_Dispense_Handle(), TIM_CHANNEL_2, 60);
+    osDelay(1000);
+    run270Servo(Get_PWM_Dispense_Handle(), TIM_CHANNEL_3, 0);
+    osDelay(1000);
+    run270Servo(Get_PWM_Dispense_Handle(), TIM_CHANNEL_3, 60);
+    osDelay(1000);
+    run270Servo(Get_PWM_Dispense_Handle(), TIM_CHANNEL_4, 0);
+    osDelay(1000);
+    run270Servo(Get_PWM_Dispense_Handle(), TIM_CHANNEL_4, 60);
+    osDelay(1000);
+    /*
+    uint32_t adcValue = HAL_ADC_GetValue(hadc);
+    if (isPillDetected())
+    {
+      LogDebug("Pill detected!\n", adcValue);
+      osDelay(200);
+      resetPillFlag();
+    }
+    LogDebug("%lu\n", adcValue);
+    osDelay(20);
+    */
+    if(GPIOisPillDetected(3)) {
+      LogDebug("GPIO style Pill detected!\n");
+      osDelay(200);
+      GPIOresetPillFlag(3);
+    }
+    osDelay(20);
   }
   /* USER CODE END defaultTask */
 }
