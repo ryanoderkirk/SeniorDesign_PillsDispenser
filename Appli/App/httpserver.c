@@ -57,6 +57,7 @@ typedef enum {
   GET_LOG,
   SET_LOG,
   GET_CONFIG,
+  GET_ALL_CONFIG,
   SET_CONFIG,
   CLEAR_CONFIG,
   GET_TIME,
@@ -155,6 +156,7 @@ HttpServer_response_t http_server_responses[] = {
     {GET_LOG, "GET /log", example_log_response},
     {SET_LOG, "PUT /log", example_put_response},
     {GET_CONFIG, "GET /config", example_log_response},
+    {GET_ALL_CONFIG, "GET /allConfig", example_log_response},
     {SET_CONFIG, "PUT /config", example_put_response},
     {CLEAR_CONFIG, "GET /clearConfig", example_put_response},
     {GET_TIME, "GET /time", example_log_response},
@@ -734,6 +736,46 @@ static int get_config(Config_t *config, char *recv_buffer) {
   return 0;
 }
 
+static int get_all_config() {
+  Config_t config;
+  int bodySize = sizeof(response_body);
+  int stringOffset = 0;
+  for (int i = 1; i < 5; i++) {
+    int result = readConfig(&config, i);
+    char channelString[128] = {0};
+    if (result != 0) {
+      snprintf(channelString, sizeof(channelString),
+               "CONFIG | Channel: %d | Count: %d | Pill: %s\n", i, -1,
+               "Not Configured");
+    } else {
+      snprintf(channelString, sizeof(channelString),
+               "CONFIG | Channel: %d | Count: %d | Pill: %s\n", config.channel,
+               config.pillCount, config.pillName);
+    }
+
+    int remaining = (int)bodySize - stringOffset;
+    if (remaining > 0) {
+      int written = snprintf(response_body + stringOffset, remaining, "%s",
+                             channelString);
+
+      if (written < 0) {
+        build_http_error_response(full_response, sizeof(full_response), 400,
+                                  "String write error");
+        return -1;
+      }
+
+      if (written >= remaining) {
+        stringOffset = (int)bodySize - 1; // Buffer is full
+      } else {
+        stringOffset += written;
+      }
+    }
+  }
+  build_http_200_response(full_response, sizeof(full_response), response_body);
+
+  return 0;
+}
+
 static int set_config(char *recv_buffer) {
 
   Config_t new_config = {0};
@@ -1092,6 +1134,11 @@ static void http_process_response(int32_t client, char *recv_buffer) {
   {
     Config_t config;
     get_config(&config, recv_buffer);
+    response_data = full_response;
+  }
+
+  if (response == GET_ALL_CONFIG) {
+    get_all_config();
     response_data = full_response;
   }
 
