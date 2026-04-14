@@ -1,0 +1,40 @@
+/*
+ * 	Alert.h
+ * 	Contains function and variable declarations pertinent to the alert
+ * system
+ *
+ */
+
+#ifndef ALERT_H
+#define ALERT_H
+
+#include <stdint.h>
+
+typedef enum dosage_alert { CLEAR, ACTIVE } dosage_alert_t;
+
+typedef enum low_pill_alert {
+  off = 0,
+  channel1 = 1,
+  channel2 = 2,
+  channel3 = 4,
+  channel4 = 8
+} low_pill_alert_mask_t;
+
+extern volatile dosage_alert_t dosageAlert;
+extern volatile uint8_t lowPillAlert;
+
+dosage_alert_t checkDosageAlert();
+
+uint8_t readDosageAlert();
+
+uint8_t readDosageAlertChannel(uint8_t* channel);
+
+void clearDosageAlert();
+
+uint8_t checkLowPillAlert();
+
+uint8_t readLowPillAlert(uint8_t channel);
+
+void clearLowPillAlert(uint8_t channel);
+
+#endif
