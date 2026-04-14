@@ -68,6 +68,7 @@ TIM_HandleTypeDef* Get_ADC_TIM_Handle(void);
 UART_HandleTypeDef* Get_DEBUG_Handle(void);
 
 osMutexId_t* getFlashMutex();
+osMutexId_t* getDispenseMutex();
 RTC_HandleTypeDef* getRTCHandle();
 SPI_HandleTypeDef* getFlashSPIHandle();
 void get_rtc_timestamp(char *buffer);

@@ -4,16 +4,16 @@
  */
 
 #include "dispenseControl.h"
-#include <string.h>
+#include "logging.h"
 #include "main.h"
 #include "stm32h5xx_hal.h"
 #include <stdint.h>
 #include <stdio.h>
-#include "logging.h"
+#include <string.h>
 
 static uint32_t GATE_CHANNEL = TIM_CHANNEL_1;
 
-int dispensePills(uint32_t channel, uint32_t numberPills) {
+int dispensePills_internal(uint32_t channel, uint32_t numberPills) {
   // ensure PWM timer and ADC are enabled and functioning
   // configure timer
   TIM_HandleTypeDef *htimDispenser = Get_PWM_Dispense_Handle();
@@ -210,20 +210,42 @@ int dispensePills(uint32_t channel, uint32_t numberPills) {
   return 0;
 }
 
-int dispenseDosage(const Dosage_t* dosage) {
-  // ensure that the pills specified in the dosage exist in a channel, and that there are enough of them
+int dispensePills(uint32_t channel, uint32_t numberPills) {
+  int result = -1;
+  osMutexId_t *dispenseMutex = getDispenseMutex();
 
-  //map dose (index +1) to the channel its located in
+  if (dispenseMutex == NULL || *dispenseMutex == NULL) {
+    LogDebug("Dispense mutex is null\n");
+    return -1;
+  }
+
+  if (osMutexAcquire(*dispenseMutex, 200) != osOK) {
+    LogDebug("Dispense mutex could not be acquired\n");
+    return -1;
+  }
+
+  result = dispensePills_internal(channel, numberPills);
+  osMutexRelease(*dispenseMutex);
+
+  return result;
+}
+
+int dispenseDosage(const Dosage_t *dosage) {
+  // ensure that the pills specified in the dosage exist in a channel, and that
+  // there are enough of them
+
+  // map dose (index +1) to the channel its located in
   uint8_t doseChannel[4] = {0};
-  //map dose (index +1) to the channel its located in
+  // map dose (index +1) to the channel its located in
   uint8_t doseChannelCount[4] = {0};
 
   int pillExists = -1;
-  if(dosage->pillOne[0] != '\0' ) {
+  if (dosage->pillOne[0] != '\0') {
     for (int i = 1; i < 5; i++) {
       Config_t channelConfig;
       int result = readConfig(&channelConfig, i);
-      if (strcmp((char*)dosage->pillOne, (char*)channelConfig.pillName) == 0) {
+      if (strcmp((char *)dosage->pillOne, (char *)channelConfig.pillName) ==
+          0) {
         if (dosage->pillOneCount > channelConfig.pillCount) {
           LogDebug("Not enough pills in channel to dispense");
           return -1;
@@ -241,11 +263,12 @@ int dispenseDosage(const Dosage_t* dosage) {
   }
 
   pillExists = -1;
-  if(dosage->pillTwo[0] != '\0' ) {
+  if (dosage->pillTwo[0] != '\0') {
     for (int i = 1; i < 5; i++) {
       Config_t channelConfig;
       int result = readConfig(&channelConfig, i);
-      if (strcmp((char*)dosage->pillTwo, (char*)channelConfig.pillName) == 0) {
+      if (strcmp((char *)dosage->pillTwo, (char *)channelConfig.pillName) ==
+          0) {
         if (dosage->pillTwoCount > channelConfig.pillCount) {
           LogDebug("Not enough pills in channel to dispense");
           return -1;
@@ -263,11 +286,12 @@ int dispenseDosage(const Dosage_t* dosage) {
   }
 
   pillExists = -1;
-  if(dosage->pillThree[0] != '\0' ) {
+  if (dosage->pillThree[0] != '\0') {
     for (int i = 1; i < 5; i++) {
       Config_t channelConfig;
       int result = readConfig(&channelConfig, i);
-      if (strcmp((char*)dosage->pillThree, (char*)channelConfig.pillName) == 0) {
+      if (strcmp((char *)dosage->pillThree, (char *)channelConfig.pillName) ==
+          0) {
         if (dosage->pillThreeCount > channelConfig.pillCount) {
           LogDebug("Not enough pills in channel to dispense");
           return -1;
@@ -285,11 +309,12 @@ int dispenseDosage(const Dosage_t* dosage) {
   }
 
   pillExists = -1;
-  if(dosage->pillFour[0] != '\0' ) {
+  if (dosage->pillFour[0] != '\0') {
     for (int i = 1; i < 5; i++) {
       Config_t channelConfig;
       int result = readConfig(&channelConfig, i);
-      if (strcmp((char*)dosage->pillFour, (char*)channelConfig.pillName) == 0) {
+      if (strcmp((char *)dosage->pillFour, (char *)channelConfig.pillName) ==
+          0) {
         if (dosage->pillFourCount > channelConfig.pillCount) {
           LogDebug("Not enough pills in channel to dispense");
           return -1;
@@ -306,7 +331,7 @@ int dispenseDosage(const Dosage_t* dosage) {
     }
   }
 
-  for(int i = 0; i<4; i++) {
+  for (int i = 0; i < 4; i++) {
     if (doseChannel[i] == 0)
       continue;
     int result = dispensePills(doseChannel[i], doseChannelCount[i]);
@@ -314,11 +339,11 @@ int dispenseDosage(const Dosage_t* dosage) {
       LogDebug("Failed to dispense pills");
       return -1;
     }
-    //decrement pills picked
+    // decrement pills picked
     Config_t config;
-    if(readConfig(&config, doseChannel[i]) == 0) {
-    	config.pillCount -= doseChannelCount[i];
-    	writeConfig(&config);
+    if (readConfig(&config, doseChannel[i]) == 0) {
+      config.pillCount -= doseChannelCount[i];
+      writeConfig(&config);
     }
   }
 
@@ -326,17 +351,17 @@ int dispenseDosage(const Dosage_t* dosage) {
 }
 
 int openGate() {
-    TIM_HandleTypeDef* htimGate = Get_PWM_Gate_Handle();
-    run270Servo(*htimGate, GATE_CHANNEL, 0);
-    osDelay(500);
-    HAL_TIM_PWM_Stop(htimGate, GATE_CHANNEL);
-    return 0;
+  TIM_HandleTypeDef *htimGate = Get_PWM_Gate_Handle();
+  run270Servo(*htimGate, GATE_CHANNEL, 0);
+  osDelay(500);
+  HAL_TIM_PWM_Stop(htimGate, GATE_CHANNEL);
+  return 0;
 }
 
 int closeGate() {
-    TIM_HandleTypeDef* htimGate = Get_PWM_Gate_Handle();
-    run270Servo(*htimGate, GATE_CHANNEL, 90);
-    osDelay(500);
-    HAL_TIM_PWM_Stop(htimGate, GATE_CHANNEL);
-    return 0;
+  TIM_HandleTypeDef *htimGate = Get_PWM_Gate_Handle();
+  run270Servo(*htimGate, GATE_CHANNEL, 90);
+  osDelay(500);
+  HAL_TIM_PWM_Stop(htimGate, GATE_CHANNEL);
+  return 0;
 }
