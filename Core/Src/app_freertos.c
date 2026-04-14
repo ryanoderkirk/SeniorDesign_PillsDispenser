@@ -259,13 +259,13 @@ void alert_Task(void *argument)
 	  checkDosageAlert();
 	  checkLowPillAlert();
 
-	  clearDosageAlert();
+	  //clearDosageAlert();
 	  LogDebug("Dosage Alert:%d\n",dosageAlert);
 	  for(int channel = 1; channel < 5; channel++){
 		  uint8_t triggered = readLowPillAlert(channel);
 		  LogDebug("Low Pill Alert - Channel %d: %d\n",channel,triggered);
-		  clearLowPillAlert(channel);
-		  resetLowPillAlert(channel);
+		  //clearLowPillAlert(channel);
+		  //resetLowPillAlert(channel);
 	  }
     osDelay(1000);//1000*60);
   }
