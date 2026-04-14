@@ -64,7 +64,7 @@ osThreadId_t UI_TaskHandle;
 const osThreadAttr_t UI_Task_attributes = {
   .name = "UI_Task",
   .priority = (osPriority_t) osPriorityLow,
-  .stack_size = 1024 * 4
+  .stack_size = 2048 * 4
 };
 /* Definitions for alert_Task */
 osThreadId_t alert_TaskHandle;

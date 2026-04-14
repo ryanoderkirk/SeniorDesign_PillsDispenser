@@ -394,17 +394,19 @@ void drawScreen() {
     ILI9341_DrawText("LOW PILL ALERT", FONT3, 10, 5, BLACK, WHITE);
     int i = 1;
     for (; i < 5; ++i) {
-      if (readLowPillAlert(i))
-        break;
+      if (readLowPillAlert(i)){
+    	  clearLowPillAlert(i);
+        	break
+		;}
     }
     if (i == 5) {
       break;
     }
     Config_t config;
     readConfig(&config, i);
-    char buffer1[32];
+    char buffer1[40];
     char buffer2[16];
-    snprintf(buffer1, 32, "%d left in %.10s", config.pillCount,
+    snprintf(buffer1, 32, "%d pills left of %.10s", config.pillCount,
              config.pillName);
     snprintf(buffer2, 16, "Channel %d", config.channel);
     ILI9341_DrawText(buffer1, FONT3, 10, 25, BLACK, WHITE);
@@ -687,11 +689,14 @@ void UI_handleInput() {
     encoderState = NONE;
     handleEncoder(1);
   }
-  if (readDosageAlert()) {
+  if (readDosageAlert() && currentState != DISPENSE_ALERT) {
     clearDosageAlert();
     changeState(DISPENSE_ALERT);
   }
+
   for(int channel = 1; channel < 5; ++channel){
-	  changeState(LOW_PILL_ALERT);
+	  if(readLowPillAlert(channel) && currentState != LOW_PILL_ALERT){
+		  changeState(LOW_PILL_ALERT);
+	  }
   }
 }
