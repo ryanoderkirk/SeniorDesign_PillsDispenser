@@ -227,6 +227,28 @@ int dispensePills(uint32_t channel, uint32_t numberPills) {
   result = dispensePills_internal(channel, numberPills);
   osMutexRelease(*dispenseMutex);
 
+  if (result == 0) {
+    LogEntry_t log = {0};
+    fillLogTimestamp(&log);
+    log.logType = dispenseTransaction;
+    switch (channel) {
+      case 1:
+        log.one = numberPills;
+      break;
+      case 2:
+        log.two = numberPills;
+      break;
+      case 3:
+        log.three = numberPills;
+      break;
+      case 4:
+        log.four = numberPills;
+      break;
+    }
+    writeLog(&log);
+  }
+
+
   return result;
 }
 
