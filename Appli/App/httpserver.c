@@ -56,6 +56,7 @@ static char full_response[512];
 typedef enum {
   INDEX_HTML,
   GET_LOG,
+  GET_LOGS,
   SET_LOG,
   GET_CONFIG,
   GET_ALL_CONFIG,
@@ -155,6 +156,7 @@ char example_put_response[] = {
 HttpServer_response_t http_server_responses[] = {
     {INDEX_HTML, "GET / ", response_index_html},
     {GET_LOG, "GET /log", example_log_response},
+    {GET_LOGS, "GET /logs", example_log_response},
     {SET_LOG, "PUT /log", example_put_response},
     {GET_CONFIG, "GET /config", example_log_response},
     {GET_ALL_CONFIG, "GET /allConfig", example_log_response},
@@ -618,6 +620,85 @@ static int get_log(LogEntry_t *log) {
            "%d,%d,%d,%d",
            log->year, log->month, log->day, log->hour, log->min, log->sec,
            log->logType, log->one, log->two, log->three, log->four);
+  build_http_200_response(full_response, sizeof(full_response), response_body);
+  return 0;
+}
+
+static int get_logs(char* recv_buffer, LogEntry_t *logArray, int logArraySize) {
+  int count = 0;
+  
+  // 1. Parse URI logic
+  char *uri_start = strchr(recv_buffer, ' ');
+  if (uri_start == NULL) return -1;
+  uri_start++;
+
+  char *uri_end = strchr(uri_start, ' ');
+  if (uri_end == NULL) return -2;
+
+  char original_char = *uri_end;
+  *uri_end = '\0';
+
+  char *query = strchr(uri_start, '?');
+  if (query == NULL) {
+    *uri_end = original_char; // Restore before returning
+    build_http_error_response(full_response, sizeof(full_response), 400, "Missing query string");
+    return -3;
+  }
+
+  if (sscanf(query, "?count=%d", &count) != 1) {
+      *uri_end = original_char;
+      build_http_error_response(full_response, sizeof(full_response), 400, "Invalid count parameter");
+      return -4;
+  }
+  *uri_end = original_char;
+
+  // Bound checking
+  if (count < 1) count = 1;
+  // Do not exceed the physical size of the logArray passed in
+  if (count > logArraySize) {
+    count = logArraySize;
+  }
+
+  // 3. Read the logs from filesystem
+  // readLogs now returns the number of logs read (0 to count) or negative for error
+  int logsRead = readLogs(logArray, count);
+
+  if (logsRead == -1) {
+    build_http_error_response(full_response, sizeof(full_response), 404, "No log written today");
+    return -1;
+  }
+  if (logsRead < 0) {
+    build_http_error_response(full_response, sizeof(full_response), 500, "Log read failed");
+    return -2;
+  }
+
+  // Build the string of N logs
+  int bodyOffset = 0;
+  memset(response_body, 0, sizeof(response_body));
+
+  for (int i = 0; i < logsRead; i++) {
+    char entryString[160]; // Local buffer for one log line
+    LogEntry_t *l = &logArray[i];
+
+    int lineLen = snprintf(entryString, sizeof(entryString),
+             "LOG: 20%02d-%02d-%02d %02d:%02d:%02d | Type: %d | Data: %d,%d,%d,%d\n",
+             l->year, l->month, l->day, l->hour, l->min, l->sec,
+             l->logType, l->one, l->two, l->three, l->four);
+
+    // Check remaining space in global response_body
+    int remaining = sizeof(response_body) - bodyOffset;
+    if (remaining > 0) {
+      int written = snprintf(response_body + bodyOffset, remaining, "%s", entryString);
+
+      if (written >= remaining) {
+        bodyOffset = sizeof(response_body) - 1;
+        break; // Buffer full
+      } else {
+        bodyOffset += written;
+      }
+    }
+  }
+
   build_http_200_response(full_response, sizeof(full_response), response_body);
   return 0;
 }
@@ -1133,6 +1214,12 @@ static void http_process_response(int32_t client, char *recv_buffer) {
   if (response == GET_LOG) {
     LogEntry_t log;
     get_log(&log);
+    response_data = full_response;
+  }
+
+  if (response == GET_LOGS) {
+    LogEntry_t logs[15] = {0};
+    get_logs(recv_buffer, logs, sizeof(logs)/sizeof(LogEntry_t));
     response_data = full_response;
   }
 
