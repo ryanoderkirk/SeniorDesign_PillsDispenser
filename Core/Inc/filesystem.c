@@ -546,6 +546,63 @@ int readLog(LogEntry_t *log) {
 }
 
 
+// Read last logCount amount of logs for a given day. Return amount of logs read
+int readLogs(LogEntry_t *logs, uint32_t logCount) {
+  if (filesystemMutex == NULL) return -1;
+
+  if (osMutexAcquire(filesystemMutex, 500U) != osOK) {
+    LogDebug("Could not acquire filesystem mutex!");
+    return -2;
+  }
+
+  char filePath[20] = "/logs/YYMMDD";
+  get_rtc_YYMMDD(filePath + 6);
+
+  int result = lfs_file_open(&lfs, &file, filePath, LFS_O_RDONLY);
+  if (result != 0) {
+    LogDebug("file not yet created");
+    osMutexRelease(filesystemMutex);
+    return -1;
+  }
+
+  lfs_soff_t fileSize = lfs_file_size(&lfs, &file);
+  uint32_t availableLogs = (uint32_t)(fileSize / sizeof(LogEntry_t));
+
+  if (availableLogs == 0) {
+    lfs_file_close(&lfs, &file);
+    osMutexRelease(filesystemMutex);
+    return 0; // No logs to read
+  }
+
+  // Cap the request to what is actually available
+  uint32_t toRead = (logCount > availableLogs) ? availableLogs : logCount;
+
+  // Seek back from the end to the start of the 'toRead' block
+  lfs_soff_t offset = (lfs_soff_t)toRead * sizeof(LogEntry_t);
+  result = lfs_file_seek(&lfs, &file, -offset, LFS_SEEK_END);
+
+  if (result < 0) {
+    lfs_file_close(&lfs, &file);
+    osMutexRelease(filesystemMutex);
+    return -1;
+  }
+
+  // Read the entire block into the array
+  size_t bytesToRead = toRead * sizeof(LogEntry_t);
+  result = lfs_file_read(&lfs, &file, logs, bytesToRead);
+  
+  lfs_file_close(&lfs, &file);
+  osMutexRelease(filesystemMutex);
+
+  if (result < 0) {
+    LogDebug("File read failed");
+    return -1;
+  }
+
+  // Return the actual number of logs read
+  return (int)(result / sizeof(LogEntry_t));
+}
+
 int writeConfig(Config_t* config) {
   if (filesystemMutex == NULL)
     return -1;
