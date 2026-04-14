@@ -40,6 +40,7 @@ https://wiki.st.com/stm32mcu/wiki/Connectivity:Wi-Fi_ST67W6X_HTTP_Server_Applica
 /* USER CODE BEGIN Includes */
 #include "filesystem.h"
 #include "jsmn.h"
+#include "dispenseControl.h"
 /* USER CODE END Includes */
 
 /* Global variables ----------------------------------------------------------*/
@@ -55,8 +56,10 @@ static char full_response[512];
 typedef enum {
   INDEX_HTML,
   GET_LOG,
+  GET_LOGS,
   SET_LOG,
   GET_CONFIG,
+  GET_ALL_CONFIG,
   SET_CONFIG,
   CLEAR_CONFIG,
   GET_TIME,
@@ -153,8 +156,10 @@ char example_put_response[] = {
 HttpServer_response_t http_server_responses[] = {
     {INDEX_HTML, "GET / ", response_index_html},
     {GET_LOG, "GET /log", example_log_response},
+    {GET_LOGS, "GET /logs", example_log_response},
     {SET_LOG, "PUT /log", example_put_response},
     {GET_CONFIG, "GET /config", example_log_response},
+    {GET_ALL_CONFIG, "GET /allConfig", example_log_response},
     {SET_CONFIG, "PUT /config", example_put_response},
     {CLEAR_CONFIG, "GET /clearConfig", example_put_response},
     {GET_TIME, "GET /time", example_log_response},
@@ -619,6 +624,99 @@ static int get_log(LogEntry_t *log) {
   return 0;
 }
 
+static int get_logs(char* recv_buffer, LogEntry_t *logArray, int logArraySize) {
+  int count = 0;
+  
+  // 1. Parse URI logic
+  char *uri_start = strchr(recv_buffer, ' ');
+  if (uri_start == NULL) return -1;
+  uri_start++;
+
+  char *uri_end = strchr(uri_start, ' ');
+  if (uri_end == NULL) return -2;
+
+  char original_char = *uri_end;
+  *uri_end = '\0';
+
+  char *query = strchr(uri_start, '?');
+  if (query == NULL) {
+    *uri_end = original_char; // Restore before returning
+    build_http_error_response(full_response, sizeof(full_response), 400, "Missing query string");
+    return -3;
+  }
+
+  if (sscanf(query, "?count=%d", &count) != 1) {
+      *uri_end = original_char;
+      build_http_error_response(full_response, sizeof(full_response), 400, "Invalid count parameter");
+      return -4;
+  }
+  *uri_end = original_char;
+
+  // Bound checking
+  if (count < 1) count = 1;
+  // Do not exceed the physical size of the logArray passed in
+  if (count > logArraySize) {
+    count = logArraySize;
+  }
+
+  // 3. Read the logs from filesystem
+  // readLogs now returns the number of logs read (0 to count) or negative for error
+  int logsRead = readLogs(logArray, count);
+
+  if (logsRead == -1) {
+    build_http_error_response(full_response, sizeof(full_response), 404, "No log written today");
+    return -1;
+  }
+  if (logsRead < 0) {
+    build_http_error_response(full_response, sizeof(full_response), 500, "Log read failed");
+    return -2;
+  }
+
+  // Build the string of N logs
+  int bodyOffset = 0;
+  memset(response_body, 0, sizeof(response_body));
+
+  for (int i = 0; i < logsRead; i++) {
+    char entryString[160]; // Local buffer for one log line
+    LogEntry_t *l = &logArray[i];
+
+    char logType[30] = {0};
+    switch (logArray[i].logType) {
+    case dispenseTransaction:
+      strcpy(logType, "Dispense");
+      break;
+    case systemBoot:
+      strcpy(logType, "Boot");
+      break;
+    default:
+      strcpy(logType, "-");
+    }
+
+    int lineLen = snprintf(
+        entryString, sizeof(entryString),
+        "LOG: 20%02d-%02d-%02d %02d:%02d:%02d | Type: %s | Data: %d,%d,%d,%d\n",
+        l->year, l->month, l->day, l->hour, l->min, l->sec, logType, l->one,
+        l->two, l->three, l->four);
+
+    // Check remaining space in global response_body
+    int remaining = sizeof(response_body) - bodyOffset;
+    if (remaining > 0) {
+      int written =
+          snprintf(response_body + bodyOffset, remaining, "%s", entryString);
+
+      if (written >= remaining) {
+        bodyOffset = sizeof(response_body) - 1;
+        break; // Buffer full
+      } else {
+        bodyOffset += written;
+      }
+    }
+  }
+
+  build_http_200_response(full_response, sizeof(full_response), response_body);
+  return 0;
+}
+
 static int set_log(char *recv_buffer) {
   LogEntry_t new_log = {0};
   int items_parsed;
@@ -731,6 +829,46 @@ static int get_config(Config_t *config, char *recv_buffer) {
            "CONFIG | Channel: %d | Count: %d | Pill: %s", config->channel,
            config->pillCount, config->pillName);
   build_http_200_response(full_response, sizeof(full_response), response_body);
+  return 0;
+}
+
+static int get_all_config() {
+  Config_t config;
+  int bodySize = sizeof(response_body);
+  int stringOffset = 0;
+  for (int i = 1; i < 5; i++) {
+    int result = readConfig(&config, i);
+    char channelString[128] = {0};
+    if (result != 0) {
+      snprintf(channelString, sizeof(channelString),
+               "CONFIG | Channel: %d | Count: %d | Pill: %s\n", i, -1,
+               "Not Configured");
+    } else {
+      snprintf(channelString, sizeof(channelString),
+               "CONFIG | Channel: %d | Count: %d | Pill: %s\n", config.channel,
+               config.pillCount, config.pillName);
+    }
+
+    int remaining = (int)bodySize - stringOffset;
+    if (remaining > 0) {
+      int written = snprintf(response_body + stringOffset, remaining, "%s",
+                             channelString);
+
+      if (written < 0) {
+        build_http_error_response(full_response, sizeof(full_response), 400,
+                                  "String write error");
+        return -1;
+      }
+
+      if (written >= remaining) {
+        stringOffset = (int)bodySize - 1; // Buffer is full
+      } else {
+        stringOffset += written;
+      }
+    }
+  }
+  build_http_200_response(full_response, sizeof(full_response), response_body);
+
   return 0;
 }
 
@@ -1035,11 +1173,21 @@ static int get_dispense(char* recv_buffer) {
     return -4;
   }
 
-  int result = dispensePills(channel, 1);
+  static DispenseTaskParams_t dispenseParameters[4];
+  dispenseParameters[channel - 1].channel = channel;
+  dispenseParameters[channel - 1].amount = 1;
+      /* Create the task, storing the handle. */
+   BaseType_t xReturned = xTaskCreate(
+                      vDispensePills,       /* Function that implements the task. */
+                      "dispensePills",          /* Text name for the task. */
+                      1024,      /* Stack size in words, not bytes. */
+                      ( void * ) &dispenseParameters[channel - 1],    /* Parameter passed into the task. */
+                      configMAX_PRIORITIES - 15,/* Priority at which the task is created. */
+                      NULL );      /* Used to pass out the created task's handle. */
 
-  if (result != 0) {
+  if (xReturned != pdPASS) {
     build_http_error_response(full_response, sizeof(full_response), 404,
-                              "Dispense mutex failed");
+                              "Failed to create dispense task");
     return -1;
   }
 
@@ -1083,6 +1231,12 @@ static void http_process_response(int32_t client, char *recv_buffer) {
     response_data = full_response;
   }
 
+  if (response == GET_LOGS) {
+    LogEntry_t logs[15] = {0};
+    get_logs(recv_buffer, logs, sizeof(logs)/sizeof(LogEntry_t));
+    response_data = full_response;
+  }
+
   if (response == SET_LOG) {
     set_log(recv_buffer);
     response_data = full_response;
@@ -1092,6 +1246,11 @@ static void http_process_response(int32_t client, char *recv_buffer) {
   {
     Config_t config;
     get_config(&config, recv_buffer);
+    response_data = full_response;
+  }
+
+  if (response == GET_ALL_CONFIG) {
+    get_all_config();
     response_data = full_response;
   }
 

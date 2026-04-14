@@ -68,6 +68,9 @@ int writeLog(LogEntry_t* log);
 // Read the most recent log
 int readLog(LogEntry_t* log);
 
+// Read last logCount amount of logs for a given day. Return amount of logs read
+int readLogs(LogEntry_t* log, uint32_t logCount);
+
 int writeConfig(Config_t* config);
 
 int readConfig(Config_t* config, int channel);
