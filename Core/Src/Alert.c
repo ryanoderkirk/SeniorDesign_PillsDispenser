@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 // hold alert States
-dosage_alert_t dosageAlert = CLEAR;
+volatile dosage_alert_t dosageAlert = CLEAR;
 volatile uint8_t lowPillAlert = 0;
 
 const uint8_t lowBar = 10;
