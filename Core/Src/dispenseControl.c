@@ -207,7 +207,7 @@ int dispensePills(uint32_t channel, uint32_t numberPills) {
   HAL_TIM_PWM_Stop(htimDispenser, TIM_channel);
   osDelay(1500);
 
-  return -1;
+  return 0;
 }
 
 int dispenseDosage(const Dosage_t* dosage) {
@@ -309,7 +309,7 @@ int dispenseDosage(const Dosage_t* dosage) {
   for(int i = 0; i<4; i++) {
     if (doseChannel[i] == 0)
       continue;
-    int result = 0;//dispensePills(doseChannel[i], doseChannelCount[i]);
+    int result = dispensePills(doseChannel[i], doseChannelCount[i]);
     if (result != 0) {
       LogDebug("Failed to dispense pills");
       return -1;
