@@ -63,9 +63,17 @@ UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
 osMutexId_t flashMutex;
+osMutexId_t dispenseMutex;
 
 const osMutexAttr_t flashMutex_attributes = {
     "flashMutex",                          // Name
+    osMutexRecursive | osMutexPrioInherit, // Attributes
+    NULL,                                  // Memory for control block
+    0U                                     // Size of control block
+};
+
+const osMutexAttr_t dispenseMutex_attributes = {
+    "dispenseMutex",                       // Name
     osMutexRecursive | osMutexPrioInherit, // Attributes
     NULL,                                  // Memory for control block
     0U                                     // Size of control block
@@ -965,10 +973,15 @@ int initFlashMutex(void) {
   if (flashMutex == NULL) {
     return -1;
   }
+  dispenseMutex = osMutexNew(&dispenseMutex_attributes);
+  if (dispenseMutex == NULL) {
+    return -1;
+  }
   return 0;
 }
 
 osMutexId_t *getFlashMutex() { return &flashMutex; }
+osMutexId_t *getDispenseMutex() { return &dispenseMutex; }
 
 void get_rtc_timestamp(char *buffer) {
   RTC_TimeTypeDef gTime;
