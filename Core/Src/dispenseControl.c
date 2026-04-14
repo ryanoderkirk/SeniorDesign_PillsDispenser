@@ -230,6 +230,14 @@ int dispensePills(uint32_t channel, uint32_t numberPills) {
   return result;
 }
 
+void vDispensePills(void *pvParameters) {
+  DispenseTaskParams_t* params = (DispenseTaskParams_t*) pvParameters;
+  int channel = params->channel;
+  int amount = params->amount;
+  dispensePills(channel, amount);
+  vTaskDelete(NULL);
+}
+
 int dispenseDosage(const Dosage_t *dosage) {
   // ensure that the pills specified in the dosage exist in a channel, and that
   // there are enough of them

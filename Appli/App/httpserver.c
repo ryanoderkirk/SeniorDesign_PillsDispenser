@@ -40,6 +40,7 @@ https://wiki.st.com/stm32mcu/wiki/Connectivity:Wi-Fi_ST67W6X_HTTP_Server_Applica
 /* USER CODE BEGIN Includes */
 #include "filesystem.h"
 #include "jsmn.h"
+#include "dispenseControl.h"
 /* USER CODE END Includes */
 
 /* Global variables ----------------------------------------------------------*/
@@ -1077,11 +1078,21 @@ static int get_dispense(char* recv_buffer) {
     return -4;
   }
 
-  int result = dispensePills(channel, 1);
+  static DispenseTaskParams_t dispenseParameters[4];
+  dispenseParameters[channel - 1].channel = channel;
+  dispenseParameters[channel - 1].amount = 1;
+      /* Create the task, storing the handle. */
+   BaseType_t xReturned = xTaskCreate(
+                      vDispensePills,       /* Function that implements the task. */
+                      "dispensePills",          /* Text name for the task. */
+                      1024,      /* Stack size in words, not bytes. */
+                      ( void * ) &dispenseParameters[channel - 1],    /* Parameter passed into the task. */
+                      configMAX_PRIORITIES - 15,/* Priority at which the task is created. */
+                      NULL );      /* Used to pass out the created task's handle. */
 
-  if (result != 0) {
+  if (xReturned != pdPASS) {
     build_http_error_response(full_response, sizeof(full_response), 404,
-                              "Dispense mutex failed");
+                              "Failed to create dispense task");
     return -1;
   }
 

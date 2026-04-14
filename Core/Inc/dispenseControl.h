@@ -17,7 +17,13 @@ typedef enum {
   four = 4
 } channel_e;
 
+typedef struct {
+    int channel;
+    int amount;
+} DispenseTaskParams_t;
+
 int dispensePills(uint32_t channel, uint32_t numberPills);
+void vDispensePills(void *pvParameters);
 int dispenseDosage(const Dosage_t* dosage);
 
 int openGate();
