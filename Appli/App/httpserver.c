@@ -680,15 +680,29 @@ static int get_logs(char* recv_buffer, LogEntry_t *logArray, int logArraySize) {
     char entryString[160]; // Local buffer for one log line
     LogEntry_t *l = &logArray[i];
 
-    int lineLen = snprintf(entryString, sizeof(entryString),
-             "LOG: 20%02d-%02d-%02d %02d:%02d:%02d | Type: %d | Data: %d,%d,%d,%d\n",
-             l->year, l->month, l->day, l->hour, l->min, l->sec,
-             l->logType, l->one, l->two, l->three, l->four);
+    char logType[30] = {0};
+    switch (logArray[i].logType) {
+    case dispenseTransaction:
+      strcpy(logType, "Dispense");
+      break;
+    case systemBoot:
+      strcpy(logType, "Boot");
+      break;
+    default:
+      strcpy(logType, "-");
+    }
+
+    int lineLen = snprintf(
+        entryString, sizeof(entryString),
+        "LOG: 20%02d-%02d-%02d %02d:%02d:%02d | Type: %s | Data: %d,%d,%d,%d\n",
+        l->year, l->month, l->day, l->hour, l->min, l->sec, logType, l->one,
+        l->two, l->three, l->four);
 
     // Check remaining space in global response_body
     int remaining = sizeof(response_body) - bodyOffset;
     if (remaining > 0) {
-      int written = snprintf(response_body + bodyOffset, remaining, "%s", entryString);
+      int written =
+          snprintf(response_body + bodyOffset, remaining, "%s", entryString);
 
       if (written >= remaining) {
         bodyOffset = sizeof(response_body) - 1;
