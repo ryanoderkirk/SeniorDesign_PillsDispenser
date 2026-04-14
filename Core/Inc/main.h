@@ -56,10 +56,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
-uint32_t isPillDetected();
-uint32_t resetPillFlag();
-
-extern uint32_t GPIOpillDetected[];
+extern volatile uint32_t GPIOpillDetected[];
 uint32_t GPIOisPillDetected(int channel);
 uint32_t GPIOresetPillFlag(int channel);
 

@@ -96,7 +96,7 @@ int initFlashMutex(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 static uint32_t pillDetected = 0;
-uint32_t GPIOpillDetected[] = {0,0,0,0};
+volatile uint32_t GPIOpillDetected[] = {0,0,0,0};
 /* USER CODE END 0 */
 
 /**
@@ -1048,10 +1048,6 @@ TIM_HandleTypeDef *Get_PWM_Gate_Handle(void) { return &htim4; }
 TIM_HandleTypeDef *Get_ADC_TIM_Handle(void) { return &htim3; }
 
 UART_HandleTypeDef *Get_DEBUG_Handle(void) { return &huart3; }
-
-uint32_t isPillDetected() { return pillDetected; }
-
-uint32_t resetPillFlag() { pillDetected = 0; }
 
 uint32_t GPIOisPillDetected(int channel) {
   if (channel > 0 && channel < 5) {
