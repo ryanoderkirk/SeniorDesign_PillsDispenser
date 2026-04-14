@@ -542,6 +542,7 @@ dosage_ui_t* getDosages(unsigned short* num){
 }
 
 void loadPin(){
+	readPincode(savedPin);
 	return;
 }
 
@@ -557,6 +558,7 @@ void savePin(char* pin){
 	for(int i = 0; i < 4; ++i){
 		savedPin[i] = pin[i];
 	}
+	writePincode(savedPin);
 }
 
 void handleSelectPin(){
