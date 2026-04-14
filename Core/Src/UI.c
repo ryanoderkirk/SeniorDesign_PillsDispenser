@@ -9,6 +9,7 @@
 #include "UI.h"
 #include "main.h"
 #include "filesystem.h"
+#include "dispenseControl.h"
 #include "logging.h"
 #include "ILI9341_STM32_Driver.h"
 #include "ILI9341_GFX.h"
@@ -152,10 +153,13 @@ void changeState(UISTATE_t nextState){
 	if(nextState == DISPENSE){
 		// put dispense call here
 		// channel 1 is dosageList[selectedDosage].
-		unsigned short c1 = dosageList[selectedDosage].pillAmounts[0];
-		unsigned short c2 = dosageList[selectedDosage].pillAmounts[1];
-		unsigned short c3 = dosageList[selectedDosage].pillAmounts[2];
-		unsigned short c4 = dosageList[selectedDosage].pillAmounts[3];
+		//unsigned short c1 = dosageList[selectedDosage].pillAmounts[0];
+		//unsigned short c2 = dosageList[selectedDosage].pillAmounts[1];
+		//unsigned short c3 = dosageList[selectedDosage].pillAmounts[2];
+		//unsigned short c4 = dosageList[selectedDosage].pillAmounts[3];
+		Dosage_t doses[5];
+		readDoses(doses,5);
+		dispenseDosage(doses+selectedDosage);
 		// dispense(c1,c2,c3,c4);
 		// assuming blocking
 		changeState(MAIN);
@@ -542,6 +546,12 @@ dosage_ui_t* getDosages(unsigned short* num){
 }
 
 void loadPin(){
+	uint8_t buffer[4];
+	readPincode(buffer);
+	savedPin[0] = buffer[0]+'0';
+	savedPin[1] = buffer[1]+'0';
+	savedPin[2] = buffer[2]+'0';
+	savedPin[3] = buffer[3]+'0';
 	return;
 }
 
@@ -557,6 +567,8 @@ void savePin(char* pin){
 	for(int i = 0; i < 4; ++i){
 		savedPin[i] = pin[i];
 	}
+	uint8_t buffer[4] = {savedPin[0]-'0',savedPin[1]-'0',savedPin[2]-'0',savedPin[3]-'0'};
+	writePincode(buffer);
 }
 
 void handleSelectPin(){

@@ -64,6 +64,9 @@ typedef enum {
   GET_DOSES,
   SET_DOSES,
   CLEAR_DOSES,
+  GET_PINCODE,
+  SET_PINCODE,
+  GET_DISPENSE,
   ERROR_404_HTML,
   UNKNOWN_RESPONSE
 } HttpServer_response_e;
@@ -159,6 +162,8 @@ HttpServer_response_t http_server_responses[] = {
     {GET_DOSES, "GET /dose", example_log_response},
     {SET_DOSES, "PUT /dose", example_put_response},
     {CLEAR_DOSES, "GET /clearDoses", example_put_response},
+    {GET_PINCODE, "GET /pincode", example_put_response},
+    {GET_DISPENSE, "GET /dispense", example_put_response},
 };
 
 /* USER CODE BEGIN PV */
@@ -789,7 +794,7 @@ static int clear_config(char *recv_buffer) {
   if (uri_end == NULL)
     return -2;
 
-  // This turns "/config?ch=1 HTTP/1.1" into "/config?ch=1\0"
+  // This turns "/clearConfig?ch=1 HTTP/1.1" into "/clearConfig?ch=1\0"
   char original_char = *uri_end;
   *uri_end = '\0';
 
@@ -976,6 +981,72 @@ static int clear_doses() {
   return 0;
 }
 
+
+static int get_pincode() {
+  uint8_t pincode[5] = {0};
+  int result = readPincode(pincode);
+  if (result < 0) {
+    build_http_error_response(full_response, sizeof(full_response), 400,
+                              "Error: failed to read pincode");
+    return -1;
+  }
+  // get ascii representation of character
+  for ( int i = 0; i < 4; i++) {
+	  pincode[5] += 48;
+  }
+  pincode[4] = '\0';
+  build_http_200_response(full_response, sizeof(full_response),
+                          (char*)pincode);
+}
+
+static int get_dispense(char* recv_buffer) {
+  int channel = -1;
+
+  // 1. Find the first space (after "GET")
+  char *uri_start = strchr(recv_buffer, ' ');
+  if (uri_start == NULL)
+    return -1;
+  uri_start++; // Move past the space to the '/'
+
+  // 2. Find the second space (before "HTTP/1.1")
+  char *uri_end = strchr(uri_start, ' ');
+  if (uri_end == NULL)
+    return -2;
+
+  // This turns "/dispense?ch=1 HTTP/1.1" into "/dispense?ch=1\0"
+  char original_char = *uri_end;
+  *uri_end = '\0';
+
+  // 4. Now use strchr to find '?' within the isolated URI
+  char *query = strchr(uri_start, '?');
+
+  if (query == NULL) {
+    build_http_error_response(full_response, sizeof(full_response), 404,
+                              "failed to parse get request");
+    return -3;
+  }
+
+  sscanf(query, "?ch=%d", &channel);
+  *uri_end = original_char;
+
+  if (!(channel > 0 && channel < 5)) {
+    build_http_error_response(full_response, sizeof(full_response), 404,
+                              "Incorrect channel number!");
+    return -4;
+  }
+
+  int result = dispensePills(channel, 1);
+
+  if (result != 0) {
+    build_http_error_response(full_response, sizeof(full_response), 404,
+                              "Dispense mutex failed");
+    return -1;
+  }
+
+  build_http_200_response(full_response, sizeof(full_response), "dispense started successfully");
+  return 0;
+}
+
 static void http_process_response(int32_t client, char *recv_buffer) {
   HttpServer_response_e response = UNKNOWN_RESPONSE;
   char *response_data = NULL;
@@ -1056,6 +1127,16 @@ static void http_process_response(int32_t client, char *recv_buffer) {
 
   if (response == CLEAR_DOSES) {
     clear_doses();
+    response_data = full_response;
+  }
+
+  if (response == GET_PINCODE) {
+    get_pincode();
+    response_data = full_response;
+  }
+
+  if (response == GET_DISPENSE) {
+    get_dispense(recv_buffer);
     response_data = full_response;
   }
 
