@@ -14,6 +14,8 @@
 volatile dosage_alert_t dosageAlert = CLEAR;
 volatile uint8_t lowPillAlert = 0;
 
+volatile uint8_t dosageAlertDose = 0;
+
 const uint8_t lowBar = 10;
 volatile uint8_t lowPillAlertTriggered = 0;
 
@@ -29,10 +31,24 @@ dosage_alert_t checkDosageAlert() {
   for (int i = 0; i < num_doses; ++i) {
     if (time.Hours == doses[i].hour && time.Minutes == doses[i].min) {
       dosageAlert = ACTIVE;
+      dosageAlertDose = i;
       return dosageAlert;
     }
   }
   return dosageAlert;
+}
+
+uint8_t readDosageAlert(){
+	return dosageAlert == ACTIVE;
+}
+uint8_t readDosageAlertChannel(uint8_t* channel){
+	*channel = dosageAlertDose;
+  return dosageAlert == ACTIVE;
+}
+
+
+void clearDosageAlert(){
+	dosageAlert = 0;
 }
 
 // check if any pill channels are low
@@ -45,7 +61,7 @@ uint8_t checkLowPillAlert() {
       continue;
     }
     if (config.pillCount < lowBar) {
-      if (lowPillAlertTriggered & (1 << (i - 1)) == 0) {
+      if ((lowPillAlertTriggered & (1 << (i - 1))) == 0) {
         lowPillAlert = lowPillAlert | (1 << (i - 1));
         lowPillAlertTriggered = lowPillAlertTriggered | (1 << (i - 1));
       }
@@ -54,6 +70,15 @@ uint8_t checkLowPillAlert() {
   return lowPillAlert;
 }
 
+uint8_t readLowPillAlert(uint8_t channel){
+	return (lowPillAlert & (1 << (channel-1))) != 0;
+}
+
+
 void clearLowPillAlert(uint8_t channel) {
+	  lowPillAlert = lowPillAlert & ~(1 << (channel - 1));
+}
+
+void resetLowPillAlert(uint8_t channel) {
   lowPillAlertTriggered = lowPillAlertTriggered & ~(1 << (channel - 1));
 }

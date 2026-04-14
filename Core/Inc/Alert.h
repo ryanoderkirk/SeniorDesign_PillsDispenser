@@ -25,6 +25,16 @@ extern volatile uint8_t lowPillAlert;
 
 dosage_alert_t checkDosageAlert();
 
+uint8_t readDosageAlert();
+
+uint8_t readDosageAlertChannel(uint8_t* channel);
+
+void clearDosageAlert();
+
 uint8_t checkLowPillAlert();
+
+uint8_t readLowPillAlert(uint8_t channel);
+
+void clearLowPillAlert(uint8_t channel);
 
 #endif

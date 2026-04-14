@@ -10,6 +10,7 @@
 #include "main.h"
 #include "filesystem.h"
 #include "dispenseControl.h"
+#include "Alert.h"
 #include "logging.h"
 #include "ILI9341_STM32_Driver.h"
 #include "ILI9341_GFX.h"
@@ -27,7 +28,7 @@ const menuPage_t mainPage = {
 		.options = {
 				{.next = CONFIG, .name = "CONFIG"},
 				{.next = DOSAGELIST, .name = "DISPENSE"},
-				{.next = ALERT, .name = "TEST ALERT"}
+				{.next = DISPENSE_ALERT, .name = "TEST ALERT"}
 		}
 };
 
@@ -152,11 +153,6 @@ void changeState(UISTATE_t nextState){
 	drawScreen();
 	if(nextState == DISPENSE){
 		// put dispense call here
-		// channel 1 is dosageList[selectedDosage].
-		//unsigned short c1 = dosageList[selectedDosage].pillAmounts[0];
-		//unsigned short c2 = dosageList[selectedDosage].pillAmounts[1];
-		//unsigned short c3 = dosageList[selectedDosage].pillAmounts[2];
-		//unsigned short c4 = dosageList[selectedDosage].pillAmounts[3];
 		Dosage_t doses[5];
 		readDoses(doses,5);
 		dispenseDosage(doses+selectedDosage);
@@ -261,9 +257,11 @@ void handleBack(){
 		case SHOWIP:
 			changeState(CONFIG);
 			break;
-		case ALERT:
+		case LOW_PILL_ALERT:
+		case DISPENSE_ALERT:
 			changeState(MAIN);
 			break;
+
 		default:
 			break;
 	}
@@ -347,10 +345,10 @@ void drawScreen(){
 			doseTime[3] = dose->minute/10 + '0';
 			doseTime[4] = dose->minute%10 + '0';
 			ILI9341_DrawText(doseTime,FONT4,25,font3Height + initialOffset,BLACK,WHITE);
-			char pillAmount[11];
+			char pillAmount[32];
 			char* pillNames[4] = {dose->p1,dose->p2,dose->p3,dose->p4};
 			for(int i = 0; i < 4; ++i){
-				sprintf(pillAmount,"%.4s:%02d",pillNames[i],dose->pillAmounts[i]);
+				snprintf(pillAmount,32,"%.10s: %02d",pillNames[i],dose->pillAmounts[i]);
 				ILI9341_DrawText(pillAmount,FONT4,25,(1+i)*font3Height + initialOffset,BLACK,WHITE);
 			}
 			break;
@@ -370,9 +368,49 @@ void drawScreen(){
 			char* ip = getIP();
 			ILI9341_DrawText(ip,FONT4,10,5,BLACK,WHITE);
 			break;
-		case ALERT:
-			ILI9341_DrawText("THERE ARE PILLS",FONT3,10,5,BLACK,WHITE);
-			ILI9341_DrawText("TO BE TAKEN", FONT3,10,25,BLACK,WHITE);
+		case DISPENSE_ALERT:
+			ILI9341_DrawText("Dosage to be Taken",FONT3,10,5,BLACK,WHITE);
+			uint8_t channel;
+			readDosageAlertChannel(&channel);
+			Dosage_t doses[5];
+			int num_doses = readDoses(doses,5);
+			if(num_doses < channel){
+				break;
+			}
+			Dosage_t dosage = doses[channel];
+			char timeStr[] = "  :  ";
+			snprintf(timeStr,6,"%02d:%02d",dosage.hour,dosage.min);
+			char DAbuffer1[32];
+			snprintf(DAbuffer1,32,"Dosage at %s",timeStr);
+			ILI9341_DrawText(DAbuffer1,FONT3,10,25,BLACK,WHITE);
+			uint8_t pillAmounts[4] = {dosage.pillOneCount,dosage.pillTwoCount,dosage.pillThreeCount,dosage.pillFourCount};
+			char* names[4] = {dosage.pillOne,dosage.pillTwo,dosage.pillThree,dosage.pillFour};
+			for(int i = 0; i < 4; ++i){
+				char DAbuffer2[32];
+				snprintf(DAbuffer2,32,"%.10s: %02d",names[i],pillAmounts[i]);
+				ILI9341_DrawText(DAbuffer2,FONT3,10,25 + (i+1)*font3Height,BLACK,WHITE);
+			}
+			
+			//ILI9341_DrawText("THERE ARE PILLS",FONT3,10,5,BLACK,WHITE);
+			//ILI9341_DrawText("TO BE TAKEN", FONT3,10,25,BLACK,WHITE);
+			break;
+		case LOW_PILL_ALERT:
+			ILI9341_DrawText("LOW PILL ALERT",FONT3,10,5,BLACK,WHITE);
+			int i = 1;
+			for(;i < 5; ++i){
+				if(readLowPillAlert(i)) break;
+			}
+			if(i == 5){
+				break;
+			}
+			Config_t config;
+			readConfig(&config,i);
+			char buffer1[32];
+			char buffer2[16];
+			snprintf(buffer1,32,"%d left in %.10s",config.pillCount,config.pillName);
+			snprintf(buffer2,16,"Channel %d",config.channel);
+			ILI9341_DrawText(buffer1,FONT3,10,25,BLACK,WHITE);
+			ILI9341_DrawText(buffer2,FONT3,10,45,BLACK,WHITE);
 			break;
 		default:
 			break;
@@ -657,5 +695,9 @@ void UI_handleInput(){
     {
     	encoderState = NONE;
     	handleEncoder(1);
+    }
+    if (readDosageAlert()){
+    	clearDosageAlert();
+    	changeState(DISPENSE_ALERT);
     }
 }
