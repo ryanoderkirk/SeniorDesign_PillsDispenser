@@ -992,7 +992,7 @@ static int get_pincode() {
   }
   // get ascii representation of character
   for ( int i = 0; i < 4; i++) {
-	  pincode[i] += 48;
+	  pincode[5] += 48;
   }
   pincode[4] = '\0';
   build_http_200_response(full_response, sizeof(full_response),
@@ -1035,7 +1035,13 @@ static int get_dispense(char* recv_buffer) {
     return -4;
   }
 
-  dispensePills(channel, 1);
+  int result = dispensePills(channel, 1);
+
+  if (result != 0) {
+    build_http_error_response(full_response, sizeof(full_response), 404,
+                              "Dispense mutex failed");
+    return -1;
+  }
 
   build_http_200_response(full_response, sizeof(full_response), "dispense started successfully");
   return 0;
