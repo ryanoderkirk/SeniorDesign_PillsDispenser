@@ -257,6 +257,9 @@ void vDispensePills(void *pvParameters) {
   int channel = params->channel;
   int amount = params->amount;
   dispensePills(channel, amount);
+  openGate();
+  osDelay(2500);
+  closeGate();
   vTaskDelete(NULL);
 }
 
