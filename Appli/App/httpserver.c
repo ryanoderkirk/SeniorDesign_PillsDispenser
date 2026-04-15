@@ -1130,7 +1130,7 @@ static int get_pincode() {
   }
   // get ascii representation of character
   for ( int i = 0; i < 4; i++) {
-	  pincode[5] += 48;
+	  pincode[i] += 48;
   }
   pincode[4] = '\0';
   build_http_200_response(full_response, sizeof(full_response),
