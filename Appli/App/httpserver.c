@@ -155,7 +155,7 @@ char example_put_response[] = {
 /** Response content depending on the request */
 HttpServer_response_t http_server_responses[] = {
     {INDEX_HTML, "GET / ", response_index_html},
-    {GET_LOG, "GET /log", example_log_response},
+    {GET_LOG, "GET /onelog", example_log_response},
     {GET_LOGS, "GET /logs", example_log_response},
     {SET_LOG, "PUT /log", example_put_response},
     {GET_CONFIG, "GET /config", example_log_response},
@@ -614,12 +614,22 @@ static int get_log(LogEntry_t *log) {
     return -2;
   }
 
+    char logType[30] = {0};
+    switch (log->logType) {
+    case dispenseTransaction:
+      strcpy(logType, "Dispense");
+      break;
+    case systemBoot:
+      strcpy(logType, "Boot");
+      break;
+    default: strcpy(logType, "-");
+    }
   // happy path, read succeeded
   snprintf(response_body, sizeof(response_body),
-           "LOG EVENT: 20%02d-%02d-%02d %02d:%02d:%02d | Type: %d | Data: "
+           "LOG EVENT: 20%02d-%02d-%02d %02d:%02d:%02d | Type: %s | Data: "
            "%d,%d,%d,%d",
            log->year, log->month, log->day, log->hour, log->min, log->sec,
-           log->logType, log->one, log->two, log->three, log->four);
+           logType, log->one, log->two, log->three, log->four);
   build_http_200_response(full_response, sizeof(full_response), response_body);
   return 0;
 }
@@ -688,8 +698,7 @@ static int get_logs(char* recv_buffer, LogEntry_t *logArray, int logArraySize) {
     case systemBoot:
       strcpy(logType, "Boot");
       break;
-    default:
-      strcpy(logType, "-");
+    default: strcpy(logType, "-");
     }
 
     int lineLen = snprintf(
