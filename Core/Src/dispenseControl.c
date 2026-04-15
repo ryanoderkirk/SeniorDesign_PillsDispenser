@@ -369,11 +369,6 @@ int dispenseDosage(const Dosage_t *dosage) {
       LogDebug("Failed to dispense pills");
       return -1;
     }
-    //open gate for 2.5 seconds
-    openGate();
-    osDelay(2500);
-    closeGate();
-
     // decrement pills picked
     Config_t config;
     if (readConfig(&config, doseChannel[i]) == 0) {
@@ -381,6 +376,11 @@ int dispenseDosage(const Dosage_t *dosage) {
       writeConfig(&config);
     }
   }
+  //open gate for 2.5 seconds
+  openGate();
+  osDelay(2500);
+  closeGate();
+
 
   return 0;
 }
